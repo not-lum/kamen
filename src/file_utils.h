@@ -13,6 +13,12 @@ typedef struct LoadedFile {
     size_t content_len;
 } LoadedFile;
 
+typedef struct IndexedFile {
+    LoadedFile l_file;
+    String *index;
+    size_t lines_numb; 
+} IndexedFile;
+
 typedef enum {
     FS_OK,
     FS_OPEN_ERROR,
@@ -24,6 +30,8 @@ typedef enum {
 } FileStatus;
 
 const char *fs_error_str(FileStatus error);
-void destroy_loaded_file(LoadedFile *out_l_file);
-FileStatus get_file_size(const char *filename, size_t *out_file_size);
 FileStatus load_file_alloc(LoadedFile *out_l_file, const char *filename);
+FileStatus create_indexed_file(IndexedFile *out_idx_file, const char *filename);
+void destroy_loaded_file(LoadedFile *out_l_file);
+void destroy_indexed_file(IndexedFile *out_idx_file);
+FileStatus get_file_size(const char *filename, size_t *out_file_size);

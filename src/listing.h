@@ -1,11 +1,13 @@
 #pragma once
 
 typedef enum {
-    RIP = 0,
-    RAX,
-    RBX,
-    RCX,
-    RDX
+    IP = 0,
+    AX,
+    BX,
+    CX,
+    DX,
+
+    REG_UNKNOWN
 } RegisterCode;
 
 typedef enum {
@@ -23,5 +25,24 @@ typedef enum {
     ASM_JA,
     ASM_JB,
     ASM_JAE,
-    ASM_JBE
-} Opcode;
+    ASM_JBE,
+
+    ASM_UNKNOWN,
+} OpcodeType;
+
+static inline const char *str_reg(RegisterCode reg) {
+    switch (reg) {
+        case IP:
+            return "IP";
+        case AX:
+            return "AX";
+        case BX:
+            return "BX";
+        case CX:
+            return "CX";
+        case DX:
+            return "DX";
+        default:
+            return "UNKNOWN";
+    }
+}

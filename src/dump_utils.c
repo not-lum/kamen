@@ -7,12 +7,13 @@ void ASM_OUT_print(stk_elem_t last_elem) {
     printf(ANSI_GREEN "OUTPUT: " ANSI_RESET "<" ANSI_YELLOW DBUG_PRINTF_LIT ANSI_RESET ">\n", last_elem);
 }
 
-void opcode_print(Opcode op, ...) {
+void opcode_print(OpcodeType op, ...) {
     va_list args;
     va_start(args, op);
 
     const char *op_str = "";
     size_t numb_of_args = 0;
+    bool reg_arg = false;
 
     switch (op) {
         case ASM_HLT:
@@ -24,6 +25,7 @@ void opcode_print(Opcode op, ...) {
             break;
         case ASM_PUSH_REG:
             op_str = "PUSHr";
+            reg_arg = true;
             numb_of_args = 1;
             break;
         case ASM_POP:
@@ -31,6 +33,7 @@ void opcode_print(Opcode op, ...) {
             break;
         case ASM_POP_REG:
             op_str = "POPr";
+            reg_arg = true;
             numb_of_args = 1;
             break;
         case ASM_ADD:
@@ -58,7 +61,10 @@ void opcode_print(Opcode op, ...) {
     fprintf(stderr, ANSI_YELLOW);
 
     while (numb_of_args--) {
-        fprintf(stderr, "%d ", va_arg(args, stk_elem_t));
+        if (reg_arg)
+            fprintf(stderr, "%s ", str_reg(va_arg(args, stk_elem_t)));
+        else
+            fprintf(stderr, "%d ", va_arg(args, stk_elem_t));
     }
 
     fprintf(stderr, "\n" ANSI_RESET);

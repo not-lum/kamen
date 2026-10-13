@@ -72,7 +72,7 @@ FileStatus load_file_alloc(LoadedFile *out_l_file, const char *filename) {
         return status_gfs;
     }
 
-    char *file_buff = calloc(file_size, sizeof(out_l_file->content[0]));
+    uint8_t *file_buff = calloc(file_size + 1, sizeof(out_l_file->content[0]));
     if (file_buff == NULL) {
         fclose(file_ptr);
         return FS_ALLOC_ERROR;
@@ -96,10 +96,70 @@ FileStatus load_file_alloc(LoadedFile *out_l_file, const char *filename) {
     return FS_OK;
 }
 
+static FileStatus index_lines(IndexedFile *idx_file) {
+    assert(idx_file != NULL);
+
+    char *content = (char *)idx_file->l_file.content;
+    size_t content_len = idx_file->l_file.content_len;
+
+    idx_file->index = calloc(str_count_char(content, '\n'), sizeof(idx_file->index[0]));
+    if (idx_file->index == NULL)
+        return FS_ALLOC_ERROR;
+
+    String *index = idx_file->index;
+
+    index[0].addr = content;
+
+    idx_file->lines_numb = 1;
+
+    while (true) {
+        char *addr = strchr(index[idx_file->lines_numb - 1].addr, '\n'); // load_file_alloc adds '\0' at the end of written data, so strchr won't search for '\n' infinitely
+        if (addr == NULL)
+            break;
+
+        if (addr == content + content_len - 1) {
+            index[idx_file->lines_numb - 1].len = addr - index[idx_file->lines_numb - 1].addr;
+            *addr = '\0';
+            break;
+        }
+
+        *addr = '\0';
+        index[idx_file->lines_numb - 1].len = addr - index[idx_file->lines_numb - 1].addr;
+        index[idx_file->lines_numb].addr = addr + 1;
+        
+        idx_file->lines_numb++;
+    }
+
+    return FS_OK;
+}
+
+
+FileStatus create_indexed_file(IndexedFile *out_idx_file, const char *filename) {
+    assert(filename != NULL);
+    assert(out_idx_file != NULL);
+
+    FileStatus status = load_file_alloc(&out_idx_file->l_file, filename);
+
+    if (status != FS_OK) {
+        return status; 
+    }
+
+    status = index_lines(out_idx_file);
+
+    return status;
+}
+
 
 void destroy_loaded_file(LoadedFile *out_l_file) {
     free(out_l_file->content);
     out_l_file->content_len = 0;
+}
+
+
+void destroy_indexed_file(IndexedFile *out_idx_file) {
+    destroy_loaded_file(&out_idx_file->l_file);
+
+    free(out_idx_file->index);
 }
 
 
