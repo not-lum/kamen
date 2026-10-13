@@ -1,8 +1,8 @@
-.kamen_asm.log
-.kamen_listing.log
-.secstack.log
-src/assembly/main_old.c
+/.kamen_asm.log
+/.kamen_listing.log
+/.secstack.log
+/src/assembly/main_old.c
+/exmpl*
+/asm
+/spu
 a.out
-exmpl*
-asm
-spu
