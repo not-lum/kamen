@@ -115,8 +115,8 @@ SPUStatus spu_start(SPU *spu, size_t start) {
 
         if (opcode == ASM_PUSH || opcode == ASM_PUSH_REG) {
             // TODO: check if there are sizeof(stk_elem_t) bytes in the end for our arg
-            // TODO: solve alignment problem
-            stk_elem_t arg = *(stk_elem_t *)(content + i + 1);
+            stk_elem_t arg = 0;
+            memcpy(&arg, content + i + 1, sizeof(stk_elem_t));
 
             ON_SPU_DEBUG(
             opcode_print(opcode, arg);
@@ -134,11 +134,12 @@ SPUStatus spu_start(SPU *spu, size_t start) {
         }
         else if (opcode == ASM_POP || opcode == ASM_POP_REG) {
             // TODO: check if there are sizeof(stk_elem_t) bytes in the end for our arg
-            // TODO: solve alignment problem
             stk_elem_t arg = 0;
 
-            if (opcode == ASM_POP_REG)
-                arg = *(stk_elem_t *)(content + i + 1);
+            if (opcode == ASM_POP_REG) {
+                arg = 0;
+                memcpy(&arg, content + i + 1, sizeof(stk_elem_t));
+            }
 
             ON_SPU_DEBUG(
             opcode_print(opcode, arg);
@@ -172,7 +173,8 @@ SPUStatus spu_start(SPU *spu, size_t start) {
                  opcode == ASM_JAE || opcode == ASM_JBE) {
             // TODO: check if there are sizeof(stk_elem_t) bytes in the end for our arg
             // TODO: solve alignment problem
-            stk_elem_t arg = *(stk_elem_t *)(content + i + 1);
+            stk_elem_t arg = 0;
+            memcpy(&arg, content + i + 1, sizeof(stk_elem_t));
 
             ON_SPU_DEBUG(
             opcode_print(opcode, arg);
