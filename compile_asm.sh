@@ -1,1 +1,1 @@
-gcc -g -O0 -Wall -Wextra -fsanitize=address src/assembly/main.c src/file_utils.c src/assembly/parsing_utils.c src/assembly/write_utils.c secstack/src/secstack.c secstack/src/dump_funcs.c secstack/src/canary_utils.c -o asm
+gcc -g -O0 -Wall -Wextra -fsanitize=address src/dump_utils.c src/spu/spu.c src/assembly/main.c src/file_utils.c src/listing.c src/assembly/parsing_utils.c src/assembly/write_utils.c secstack/src/secstack.c secstack/src/dump_funcs.c secstack/src/canary_utils.c -lm -o asm

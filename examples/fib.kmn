@@ -1,0 +1,59 @@
+; Fibbonacci on kamen
+; (c) bazonavt aka not-lum
+inp DX
+call .fib_n
+push AX
+out
+hlt
+
+.fib_n:
+    push CX
+    push BX
+
+    push DX
+    push 1
+    je .first
+
+    push DX
+    push 2
+    je .first
+
+    push DX
+    pop CX
+
+    ; fib_-1
+    push CX
+    push -1
+    add
+    pop DX
+
+    call .fib_n
+    
+    push AX
+    pop BX
+    
+    ; fib_-2
+    push CX
+    push -2
+    add
+    pop DX
+
+    call .fib_n
+    
+    push BX
+    push AX
+    add
+
+    pop AX
+
+    pop BX
+    pop CX
+    ret
+
+.first:
+    push 1
+    pop AX
+
+    pop BX
+    pop CX
+    ret

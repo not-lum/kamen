@@ -11,38 +11,34 @@ const char *write_error_str(WriteStatus status) {
         case WRITE_OK:
             return "write ok";
         case WRITE_ERROR_WHILE_PARSING:
-            return "write error while parsing";
+            return "error while parsing";
         case WRITE_BCODE_FILE_OPEN_FAILED:
-            return "write byte-code file open failed";
+            return "bytecode file open failed";
         case WRITE_LISTING_FILE_OPEN_FAILED:
-            return "write listing file open failed";
+            return "error while openning listing file";
         default:
             return "unknown write error";
     }
 }
 
 static void write_instr_to(Instr *instr, FILE *to) {
-    fwrite(&instr->opcode.type, sizeof(uint8_t), 1, to);
-
-    if (instr->opcode.numb_of_args != ARGS_ZERO)
-        fwrite(&instr->arg_value, sizeof(stk_elem_t), 1, to);
+    fwrite(&instr->opcode, sizeof(uint8_t), 1, to);
+    fwrite(&instr->arg_type_mask, sizeof(uint8_t), 1, to);
+    fwrite(&instr->arg_value, sizeof(stk_elem_t), 1, to);
 }
 
 
 static void list_instr_to(Instr *instr, FILE *to) {
-    fprintf(to, "%d", instr->opcode.type);
-    
-    if (instr->opcode.numb_of_args != ARGS_ZERO)
-        fprintf(to, "%d", instr->arg_value);
-
-    fputc('\n', to);
+    fprintf(to, "%d", instr->opcode);
+    fprintf(to, "%d", instr->arg_type_mask);
+    fprintf(to, "%d\n", instr->arg_value);
 }
 
 
 WriteStatus assembly_indexed_file(IndexedFile *idx_file,
                                   const char *bcode_filename,
-                                  const char *listing_filename) {
-
+                                  const char *listing_filename,
+                                  ParsingErrorInfo *error_info) {
     assert(idx_file != NULL);
     assert(bcode_filename != NULL);
     assert(listing_filename != NULL);
@@ -51,27 +47,42 @@ WriteStatus assembly_indexed_file(IndexedFile *idx_file,
     if (bcode_file == NULL)
         return WRITE_BCODE_FILE_OPEN_FAILED;
 
-    FILE *listing_file = fopen(listing_filename, "wb");
+    FILE *listing_file = fopen(listing_filename, "w");
     if (listing_file == NULL)
         return WRITE_LISTING_FILE_OPEN_FAILED;
 
-    for (size_t i = 0; i < idx_file->lines_numb; i++) {
+    ParsingContext parsing_context = {.asm_file = *idx_file};
+    ParsingStatus status = collect_labels(&parsing_context, error_info);
+    if (status != PARSING_OK) {
+        fclose(bcode_file);
+        fclose(listing_file);
+
+        return WRITE_ERROR_WHILE_PARSING;
+    }
+
+    // for (size_t i = 0; i < 10; i++)
+    //     fprintf(stderr, "(label_name, addr): (%s, %d)\n",
+    //             parsing_context.labels[i].label_name, parsing_context.labels[i].addr);
+
+    for (size_t line = 0; line < idx_file->lines_numb; line++) {
         Instr instr = {};
-        ParsingStatus status = parse_line(idx_file, i, &instr);
+
+        status = parse_line(&parsing_context, &instr, error_info);
         if (status != PARSING_OK) {
-            fprintf(stderr, "Error while parsing: %s\n", parsing_error_str(status));
-            fprintf(stderr, "line: %zu\n", i);
             fclose(bcode_file);
             fclose(listing_file);
 
-            return WRITE_ERROR_WHILE_PARSING; // TODO: it should be more detailed, but how?
-                                              // maybe struct with each kind of statuses?
+            return WRITE_ERROR_WHILE_PARSING;
         }
 
+        // fprintf(stderr, "curr_line: %zu\n", parsing_context.curr_line_numb);
+        // fprintf(stderr, "curr_line: %zu\n", parsing_context.curr_line_numb);
         // TODO: add error handling for these:
-        write_instr_to(&instr, bcode_file);
-        list_instr_to(&instr, listing_file);
-        
+
+        if (!instr.is_comment_or_label) {
+            write_instr_to(&instr, bcode_file);
+            list_instr_to(&instr, listing_file);
+        }
     }
 
     fclose(bcode_file);

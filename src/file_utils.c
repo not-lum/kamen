@@ -102,7 +102,7 @@ static FileStatus index_lines(IndexedFile *idx_file) {
     char *content = (char *)idx_file->l_file.content;
     size_t content_len = idx_file->l_file.content_len;
 
-    idx_file->index = calloc(str_count_char(content, '\n'), sizeof(idx_file->index[0]));
+    idx_file->index = calloc(str_count_char(content, '\n') + 1, sizeof(idx_file->index[0]));
     if (idx_file->index == NULL)
         return FS_ALLOC_ERROR;
 

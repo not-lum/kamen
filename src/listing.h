@@ -1,48 +1,65 @@
 #pragma once
 
+#include "spu/spu.h"
+#include <stdint.h>
+#include <math.h>
+
+
 typedef enum {
-    IP = 0,
-    AX,
-    BX,
-    CX,
-    DX,
+    REG_IP = 0,
+    REG_AX,
+    REG_BX,
+    REG_CX,
+    REG_DX,
 
     REG_UNKNOWN
 } RegisterCode;
 
+typedef struct {
+    RegisterCode regcode;
+    const char* str_repr;
+} RegInfo;
+
 typedef enum {
     ASM_HLT = 0,
     ASM_PUSH,
-    ASM_PUSH_REG,
     ASM_POP,
-    ASM_POP_REG,
     ASM_MUL,
     ASM_ADD,
+    ASM_SUB,
     ASM_DIV,
     ASM_OUT,
+    ASM_INP,
     ASM_JMP,
     ASM_JE,
     ASM_JA,
     ASM_JB,
     ASM_JAE,
     ASM_JBE,
+    ASM_CALL,
+    ASM_RET,
+    ASM_SQRT,
 
     ASM_UNKNOWN,
-} OpcodeType;
+} Opcode;
 
-static inline const char *str_reg(RegisterCode reg) {
-    switch (reg) {
-        case IP:
-            return "IP";
-        case AX:
-            return "AX";
-        case BX:
-            return "BX";
-        case CX:
-            return "CX";
-        case DX:
-            return "DX";
-        default:
-            return "UNKNOWN";
-    }
-}
+
+typedef enum {
+    ARG_NONE = 1,
+    ARG_STK_ELEM = 1 << 1,
+    ARG_REG = 1 << 2,
+} ArgType;
+
+typedef uint8_t ArgTypeMask; 
+
+typedef struct {
+    Opcode opcode;
+    ArgTypeMask allowed_arg_type;
+    const char *str_repr;
+    SPUStatus (*func)(SPU *, stk_elem_t, bool);
+} OpInfo;
+
+OpInfo get_opinfo_by_str(const char *str_repr);
+RegInfo get_reginfo_by_code(RegisterCode regcode);
+OpInfo get_opinfo_by_opcode(Opcode opcode);
+RegInfo get_reginfo_by_str(const char *str_repr);

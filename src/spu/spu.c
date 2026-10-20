@@ -1,9 +1,12 @@
 #include "spu.h"
+#include "../listing.h"
 #include "../dump_utils.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
+
+#define IP spu->regs[REG_IP]
 
 const char *spu_error_str(SPUStatus status) {
     switch (status) {
@@ -16,20 +19,26 @@ const char *spu_error_str(SPUStatus status) {
         case SPU_INTERNAL_POP_FAILED:
             return "SPU failed while doing internal 'pop'";
         case SPU_INTERNAL_PUSH_FAILED:
-            return "SPU failed while doing internal 'push'"; 
+            return "SPU failed while doing internal 'push'";
+        case SPU_DIVISION_BY_ZERO:
+            return "SPU division by zero";
+        case SPU_INPUT_FAILED:
+            return "SPU failed to read input";
         default:
-            return "uknown SPU error";
+            return "unknown SPU error";
     }
 }
 
-SPUStatus spu_init(SPU *spu, Code *code, stack_t *stack) {
+SPUStatus spu_init(SPU *spu, Code *code, stack_t *stack, stack_t *call_stack) {
     assert(spu != NULL);
     assert(code != NULL);
     assert(stack != NULL);
+    assert(call_stack != NULL);
 
     spu->code = *code;
     spu->stack = *stack;
-    memset(spu->regs, 0, sizeof(spu->regs)); // TODO: add option to set custom regs
+    spu->call_stack = *call_stack;
+    memset(spu->regs, 0, sizeof(spu->regs));
 
     return SPU_OK;
 }
@@ -39,11 +48,39 @@ SPUStatus spu_destroy(SPU *spu) {
 
     destroy_loaded_file(&spu->code);
     stack_destroy(&spu->stack);
+    stack_destroy(&spu->call_stack);
 
     return SPU_OK;
 }
 
-SPUStatus spu_push(SPU *spu, stk_elem_t elem) {
+SPUStatus spu_call(SPU *spu, stk_elem_t addr, bool has_arg) {
+    assert(spu != NULL);
+
+    StackStatus status = 0;
+    stack_push(&spu->call_stack, IP, &status);
+    if (status != STACK_OK) {
+        return SPU_INTERNAL_PUSH_FAILED;
+    }
+
+    IP = addr;
+
+    return SPU_OK;
+}
+
+SPUStatus spu_ret(SPU *spu, stk_elem_t _, bool has_arg) {
+    assert(spu != NULL);
+
+    StackStatus status = 0;
+    IP = stack_pop(&spu->call_stack, &status);
+    if (status != STACK_OK) {
+        return SPU_INTERNAL_POP_FAILED;
+    }
+
+    return SPU_OK;
+}
+
+
+SPUStatus spu_push(SPU *spu, stk_elem_t elem, bool has_arg) {
     assert(spu != NULL);
 
     StackStatus status = 0;
@@ -54,19 +91,18 @@ SPUStatus spu_push(SPU *spu, stk_elem_t elem) {
     )
 
     if (status != STACK_OK) {
-        // TODO: more detailed error handling
         return SPU_PUSH_FAILED;
     }
     return SPU_OK;
 }
 
-SPUStatus spu_pop(SPU *spu, bool reg, RegisterCode r_code) {
+SPUStatus spu_pop(SPU *spu, stk_elem_t res, bool has_arg) {
     assert(spu != NULL);
 
     StackStatus status = 0;
 
-    if (reg)
-        spu->regs[r_code] = stack_pop(&spu->stack, &status);
+    if (has_arg)
+        spu->regs[res] = stack_pop(&spu->stack, &status);
     else
         stack_pop(&spu->stack, &status);
 
@@ -75,14 +111,34 @@ SPUStatus spu_pop(SPU *spu, bool reg, RegisterCode r_code) {
     )
 
     if (status != STACK_OK) {
-        // TODO: more detailed error handling
         return SPU_POP_FAILED;
     }
 
     return SPU_OK;
 }
 
-SPUStatus spu_out(SPU *spu) {
+SPUStatus spu_inp(SPU *spu, stk_elem_t res, bool has_arg) {
+    assert(spu != NULL);
+
+    stk_elem_t input = 0;
+    if (scanf("%d", &input) != 1)
+        return SPU_INPUT_FAILED;
+
+    if (has_arg) {
+        spu->regs[res] = input;
+        return SPU_OK;
+    }
+
+    StackStatus status = 0;
+    stack_push(&spu->stack, input, &status);
+
+    if (status != STACK_OK)
+        return SPU_INTERNAL_PUSH_FAILED;
+
+    return SPU_OK;
+}
+
+SPUStatus spu_out(SPU *spu, stk_elem_t res, bool has_arg) {
     assert(spu != NULL);
 
     StackStatus status = 0;
@@ -93,7 +149,6 @@ SPUStatus spu_out(SPU *spu) {
     )
 
     if (status != STACK_OK) {
-        // TODO: more detailed error handling
         return SPU_INTERNAL_POP_FAILED;
     }
 
@@ -102,142 +157,179 @@ SPUStatus spu_out(SPU *spu) {
     return SPU_OK;
 }
 
-SPUStatus spu_start(SPU *spu, size_t start) {
+
+static SPUStatus spu_bin_op(SPU *spu, Opcode opcode) {
     assert(spu != NULL);
-    assert(start <= spu->code.content_len);
-    
-    uint8_t *content = spu->code.content;
-    size_t content_len = spu->code.content_len;
-    size_t i = start; // TODO: replace with just start. replace with RIP
 
-    while (i < content_len) {
-        OpcodeType opcode = content[i];
+    stk_elem_t first_elem = 0;
+    stk_elem_t second_elem = 0;
 
-        if (opcode == ASM_PUSH || opcode == ASM_PUSH_REG) {
-            // TODO: check if there are sizeof(stk_elem_t) bytes in the end for our arg
-            stk_elem_t arg = 0;
-            memcpy(&arg, content + i + 1, sizeof(stk_elem_t));
+    StackStatus status = stack_pop_n(&spu->stack, 2, &second_elem, &first_elem);
+    if (status != STACK_OK)
+        return SPU_INTERNAL_POP_FAILED;
 
-            ON_SPU_DEBUG(
-            opcode_print(opcode, arg);
-            )
+    stk_elem_t result = 0;
 
-            if (opcode == ASM_PUSH_REG)
-                arg = spu->regs[arg]; // TODO: think about this: user can access RIP and segfault possible
-
-            SPUStatus status = spu_push(spu, arg);
-            
-            if (status != SPU_OK) 
-                return status;
-
-            i += 1 + sizeof(arg);
-        }
-        else if (opcode == ASM_POP || opcode == ASM_POP_REG) {
-            // TODO: check if there are sizeof(stk_elem_t) bytes in the end for our arg
-            stk_elem_t arg = 0;
-
-            if (opcode == ASM_POP_REG) {
-                arg = 0;
-                memcpy(&arg, content + i + 1, sizeof(stk_elem_t));
-            }
-
-            ON_SPU_DEBUG(
-            opcode_print(opcode, arg);
-            )
-
-
-            SPUStatus status = spu_pop(spu, (opcode == ASM_POP_REG), arg);
-
-            if (status != SPU_OK) 
-                return status;
-
-            i += 1;
-            if (opcode == ASM_POP_REG)
-                i += sizeof(stk_elem_t);
-        }
-        else if (opcode == ASM_OUT) {
-            ON_SPU_DEBUG(
-            opcode_print(opcode);
-            )
-
-            SPUStatus status = spu_out(spu);
-            getc(stdin);
-        
-            if (status != SPU_OK) 
-                return status;
-
-            i += 1;
-        }
-        else if (opcode == ASM_JMP || opcode == ASM_JE ||
-                 opcode == ASM_JA || opcode == ASM_JB ||
-                 opcode == ASM_JAE || opcode == ASM_JBE) {
-            // TODO: check if there are sizeof(stk_elem_t) bytes in the end for our arg
-            // TODO: solve alignment problem
-            stk_elem_t arg = 0;
-            memcpy(&arg, content + i + 1, sizeof(stk_elem_t));
-
-            ON_SPU_DEBUG(
-            opcode_print(opcode, arg);
-            );
-
-            if (opcode == ASM_JMP)
-                return spu_start(spu, arg);
-
-            stk_elem_t first_elem = 0;
-            stk_elem_t second_elem = 0;
-
-            StackStatus status = stack_pop_n(&spu->stack, 2, &second_elem, &first_elem);
-            if (status != STACK_OK)
-                return SPU_INTERNAL_POP_FAILED;
-
-            if (opcode == ASM_JE && first_elem == second_elem)
-                return spu_start(spu, arg);
-
-            if (opcode == ASM_JA && first_elem > second_elem)
-                return spu_start(spu, arg);
-
-            if (opcode == ASM_JB && first_elem < second_elem)
-                return spu_start(spu, arg);
-
-            if (opcode == ASM_JAE && first_elem >= second_elem)
-                return spu_start(spu, arg);
-
-            if (opcode == ASM_JBE && first_elem >= second_elem)
-                return spu_start(spu, arg);
-
-            i += 1 + sizeof(stk_elem_t);
-        }
-        else if (opcode == ASM_ADD || opcode == ASM_MUL) {
-            ON_SPU_DEBUG(
-            opcode_print(opcode);
-            )
-
-            stk_elem_t first_elem = 0;
-            stk_elem_t second_elem = 0;
-
-            StackStatus status = stack_pop_n(&spu->stack, 2, &second_elem, &first_elem);
-            if (status != STACK_OK)
-                return SPU_INTERNAL_POP_FAILED;
-
-            if (opcode == ASM_MUL)
-                stack_push(&spu->stack, first_elem * second_elem, &status);
-            else if (opcode == ASM_ADD)
-                stack_push(&spu->stack, first_elem + second_elem, &status);
-
-            if (status != STACK_OK)
-                return SPU_INTERNAL_PUSH_FAILED;
-
-            i += 1;
-        }
-        else if (opcode == ASM_HLT) {
-            ON_SPU_DEBUG(
-            opcode_print(opcode);
-            )
-
+    switch (opcode) {
+        case ASM_ADD:
+            result = first_elem + second_elem;
             break;
-        }
+        case ASM_SUB:
+            result = first_elem - second_elem;
+            break;
+        case ASM_MUL:
+            result = first_elem * second_elem;
+            break;
+        case ASM_DIV:
+            if (second_elem == 0)
+                return SPU_DIVISION_BY_ZERO;
+
+            result = first_elem / second_elem;
+            break;
+        default:
+            break;
     }
+
+    stack_push(&spu->stack, result, &status);
+    if (status != STACK_OK)
+        return SPU_INTERNAL_PUSH_FAILED;
 
     return SPU_OK;
 }
 
+SPUStatus spu_add(SPU *spu, stk_elem_t res, bool has_arg) {
+    return spu_bin_op(spu, ASM_ADD);
+}
+
+SPUStatus spu_sub(SPU *spu, stk_elem_t res, bool has_arg) {
+    return spu_bin_op(spu, ASM_SUB);
+}
+
+SPUStatus spu_mul(SPU *spu, stk_elem_t res, bool has_arg) {
+    return spu_bin_op(spu, ASM_MUL);
+}
+
+SPUStatus spu_div(SPU *spu, stk_elem_t res, bool has_arg) {
+    return spu_bin_op(spu, ASM_DIV);
+}
+
+
+SPUStatus spu_jmp(SPU *spu, stk_elem_t res, bool has_arg) {
+    assert(spu != NULL);
+
+    IP = res;
+
+    return SPU_OK;
+}
+
+
+SPUStatus spu_sqrt(SPU *spu, stk_elem_t elem, bool has_arg) {
+    assert(spu != NULL);
+
+    StackStatus status = 0;
+    int numb = stack_pop(&spu->stack, &status);
+    if (status != STACK_OK)
+        return SPU_INTERNAL_POP_FAILED;
+
+    stk_elem_t root = lround(sqrt(numb));
+    // fprintf(stderr, "orig_elem: %d\n", numb);
+    // fprintf(stderr, "sqrt_root: %d\n", root);
+
+    stack_push(&spu->stack, root, &status);
+    if (status != STACK_OK)
+        return SPU_INTERNAL_POP_FAILED;
+
+    return SPU_OK;
+}
+
+
+static SPUStatus spu_cond_jmp(SPU *spu, stk_elem_t res, Opcode opcode) {
+    assert(spu != NULL);
+
+    stk_elem_t first_elem = 0;
+    stk_elem_t second_elem = 0;
+
+    StackStatus status = stack_pop_n(&spu->stack, 2, &second_elem, &first_elem);
+    if (status != STACK_OK)
+        return SPU_INTERNAL_POP_FAILED;
+
+    bool should_jmp = false;
+
+    switch (opcode) {
+        case ASM_JE:
+            should_jmp = first_elem == second_elem;
+            break;
+        case ASM_JA:
+            should_jmp = first_elem > second_elem;
+            break;
+        case ASM_JB:
+            should_jmp = first_elem < second_elem;
+            break;
+        case ASM_JAE:
+            should_jmp = first_elem >= second_elem;
+            break;
+        case ASM_JBE:
+            should_jmp = first_elem <= second_elem;
+            break;
+        default:
+            break;
+    }
+
+    if (should_jmp)
+        IP = res;
+
+    return SPU_OK;
+}
+
+SPUStatus spu_je(SPU *spu, stk_elem_t res, bool has_arg) {
+    return spu_cond_jmp(spu, res, ASM_JE);
+}
+
+SPUStatus spu_ja(SPU *spu, stk_elem_t res, bool has_arg) {
+    return spu_cond_jmp(spu, res, ASM_JA);
+}
+
+SPUStatus spu_jb(SPU *spu, stk_elem_t res, bool has_arg) {
+    return spu_cond_jmp(spu, res, ASM_JB);
+}
+
+SPUStatus spu_jae(SPU *spu, stk_elem_t res, bool has_arg) {
+    return spu_cond_jmp(spu, res, ASM_JAE);
+}
+
+SPUStatus spu_jbe(SPU *spu, stk_elem_t res, bool has_arg) {
+    return spu_cond_jmp(spu, res, ASM_JBE);
+}
+
+
+SPUStatus spu_start(SPU *spu) {
+    assert(spu != NULL);
+    
+    uint8_t *content = spu->code.content;
+    size_t content_len = spu->code.content_len;
+
+    while (IP < content_len) {
+        OpInfo opinfo = get_opinfo_by_opcode(content[IP]);
+        ON_SPU_DEBUG(
+        opcode_print(opinfo.opcode);
+        )
+
+        ArgTypeMask arg_type_mask = content[IP + 1];
+        stk_elem_t arg = 0;
+        memcpy(&arg, content + IP + 2, sizeof(stk_elem_t));
+
+        if (opinfo.opcode == ASM_HLT)
+            break;
+
+        if ((arg_type_mask & ARG_REG) && opinfo.opcode != ASM_POP && opinfo.opcode != ASM_INP)
+            arg = spu->regs[arg];
+
+        IP += 6;
+
+        SPUStatus status = opinfo.func(spu, arg, !(arg_type_mask & ARG_NONE));
+        if (status != SPU_OK)
+            return status;
+    }
+
+    return SPU_OK;
+}

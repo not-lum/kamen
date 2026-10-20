@@ -1,0 +1,130 @@
+; Kvadratka on kamen
+; (c) bazonavt aka not-lum
+inp AX
+inp BX
+inp CX
+
+push AX
+push 1000
+mul
+pop AX
+
+push BX
+push 1000
+mul
+pop BX
+
+push CX
+push 1000
+mul
+pop CX
+
+push AX
+push 0
+je .solve_simple
+
+push BX
+push BX
+mul
+
+push 4
+push AX
+mul
+push CX
+mul
+sub
+pop DX
+
+push AX
+push 1000
+div
+pop AX
+
+push DX
+push 0
+ja .two_roots
+
+push DX
+push 0
+je .one_root
+
+jmp .no_normal_solve
+
+.two_roots:
+    ; x1 = (-b - sqrt(DX))/2a
+    push 0
+    push BX
+    sub
+
+    push DX
+    sqrt
+
+    sub
+
+    push 2
+    push AX
+    mul
+
+    div
+    out
+
+    ; x2 = (-b - sqrt(DX))/2a
+    push 0
+    push BX
+    sub
+
+    push DX
+    sqrt
+
+    add
+
+    push 2
+    push AX
+    mul
+
+    div
+    out
+    hlt
+
+.one_root:
+    push 0
+    push BX
+    sub
+
+    push 2
+    push AX
+    mul
+
+    div
+    out
+
+    hlt
+
+.solve_simple:
+    push 0
+    push CX
+    sub
+
+    push BX
+    push 0
+    je .no_normal_solve
+
+    push BX
+    div
+    out
+
+    hlt
+
+.no_normal_solve:
+    push CX
+    push 0
+    je .inf_sol
+
+    push -1
+    out
+    hlt
+
+.inf_sol:
+    push 8
+    out
+    hlt

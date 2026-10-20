@@ -1,11 +1,13 @@
-#include "../listing.h"
+#include "../dump_utils.h"
 #include "../file_utils.h"
+#include "parsing_utils.h"
 #include "write_utils.h"
 
 #include <stdio.h>
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
+
 
 #define LISTING_FILENAME ".kamen_listing.log"
 #define FAIL() do { goto cleanup; } while (0)
@@ -41,16 +43,25 @@ int main(int argc, char **argv) {
         FAIL();
     }
 
-    WriteStatus w_status = assembly_indexed_file(&asm_file, argv[2], LISTING_FILENAME);
+    ParsingErrorInfo error_info = {};
+    WriteStatus w_status = assembly_indexed_file(&asm_file, argv[2], LISTING_FILENAME, &error_info);
     if (w_status != WRITE_OK) {
         exit_code = EXIT_CANNOT_ASSEMBLE_FILE;
         fprintf(stderr, "Error while assembling: %s\n", write_error_str(w_status));
+
+        if (w_status == WRITE_ERROR_WHILE_PARSING) {
+            print_parsing_error(error_info, asm_file);
+        }
+
+
         FAIL();
     }
 
     fprintf(stderr, "Success\n");
+
 cleanup:
     destroy_indexed_file(&asm_file);
 
     return exit_code;
 }
+

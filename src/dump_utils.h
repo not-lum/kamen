@@ -20,4 +20,4 @@
 #define ANSI_RESET "\e[0m"
 
 void ASM_OUT_print(stk_elem_t last_elem);
-void opcode_print(OpcodeType op, ...); 
+void opcode_print(Opcode opcode); 
