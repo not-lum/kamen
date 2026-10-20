@@ -56,7 +56,7 @@ typedef struct {
     Opcode opcode;
     ArgTypeMask allowed_arg_type;
     const char *str_repr;
-    SPUStatus (*func)(SPU *, stk_elem_t, bool);
+    SPUStatus (*func)(SPU *, stk_elem_t);
 } OpInfo;
 
 OpInfo get_opinfo_by_str(const char *str_repr);

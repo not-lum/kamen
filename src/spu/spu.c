@@ -53,7 +53,7 @@ SPUStatus spu_destroy(SPU *spu) {
     return SPU_OK;
 }
 
-SPUStatus spu_call(SPU *spu, stk_elem_t addr, bool has_arg) {
+SPUStatus spu_call(SPU *spu, stk_elem_t addr) {
     assert(spu != NULL);
 
     StackStatus status = 0;
@@ -71,7 +71,7 @@ SPUStatus spu_call(SPU *spu, stk_elem_t addr, bool has_arg) {
     return SPU_OK;
 }
 
-SPUStatus spu_ret(SPU *spu, stk_elem_t _, bool has_arg) {
+SPUStatus spu_ret(SPU *spu, stk_elem_t elem) {
     assert(spu != NULL);
 
     StackStatus status = 0;
@@ -88,7 +88,7 @@ SPUStatus spu_ret(SPU *spu, stk_elem_t _, bool has_arg) {
 }
 
 
-SPUStatus spu_push(SPU *spu, stk_elem_t elem, bool has_arg) {
+SPUStatus spu_push(SPU *spu, stk_elem_t elem) {
     assert(spu != NULL);
 
     StackStatus status = 0;
@@ -104,15 +104,11 @@ SPUStatus spu_push(SPU *spu, stk_elem_t elem, bool has_arg) {
     return SPU_OK;
 }
 
-SPUStatus spu_pop(SPU *spu, stk_elem_t res, bool has_arg) {
+SPUStatus spu_pop(SPU *spu, stk_elem_t res) {
     assert(spu != NULL);
 
     StackStatus status = 0;
-
-    if (has_arg)
-        spu->regs[res] = stack_pop(&spu->stack, &status);
-    else
-        stack_pop(&spu->stack, &status);
+    spu->regs[res] = stack_pop(&spu->stack, &status);
 
     ON_DUMP_STACK(
     dump_stack(&spu->stack, status);
@@ -125,31 +121,19 @@ SPUStatus spu_pop(SPU *spu, stk_elem_t res, bool has_arg) {
     return SPU_OK;
 }
 
-SPUStatus spu_inp(SPU *spu, stk_elem_t res, bool has_arg) {
+SPUStatus spu_inp(SPU *spu, stk_elem_t res) {
     assert(spu != NULL);
 
     stk_elem_t input = 0;
     if (scanf("%d", &input) != 1)
         return SPU_INPUT_FAILED;
-
-    if (has_arg) {
-        spu->regs[res] = input;
-        return SPU_OK;
-    }
-
-    StackStatus status = 0;
-    stack_push(&spu->stack, input, &status);
-    if (status != STACK_OK)
-        return SPU_INTERNAL_PUSH_FAILED;
-
-    ON_DUMP_STACK(
-    dump_stack(&spu->stack, status);
-    )
+    
+    spu->regs[res] = input;
 
     return SPU_OK;
 }
 
-SPUStatus spu_out(SPU *spu, stk_elem_t res, bool has_arg) {
+SPUStatus spu_out(SPU *spu, stk_elem_t res) {
     assert(spu != NULL);
 
     StackStatus status = 0;
@@ -207,24 +191,24 @@ static SPUStatus spu_bin_op(SPU *spu, Opcode opcode) {
     return SPU_OK;
 }
 
-SPUStatus spu_add(SPU *spu, stk_elem_t res, bool has_arg) {
+SPUStatus spu_add(SPU *spu, stk_elem_t res) {
     return spu_bin_op(spu, ASM_ADD);
 }
 
-SPUStatus spu_sub(SPU *spu, stk_elem_t res, bool has_arg) {
+SPUStatus spu_sub(SPU *spu, stk_elem_t res) {
     return spu_bin_op(spu, ASM_SUB);
 }
 
-SPUStatus spu_mul(SPU *spu, stk_elem_t res, bool has_arg) {
+SPUStatus spu_mul(SPU *spu, stk_elem_t res) {
     return spu_bin_op(spu, ASM_MUL);
 }
 
-SPUStatus spu_div(SPU *spu, stk_elem_t res, bool has_arg) {
+SPUStatus spu_div(SPU *spu, stk_elem_t res) {
     return spu_bin_op(spu, ASM_DIV);
 }
 
 
-SPUStatus spu_jmp(SPU *spu, stk_elem_t res, bool has_arg) {
+SPUStatus spu_jmp(SPU *spu, stk_elem_t res) {
     assert(spu != NULL);
 
     IP = res;
@@ -233,7 +217,7 @@ SPUStatus spu_jmp(SPU *spu, stk_elem_t res, bool has_arg) {
 }
 
 
-SPUStatus spu_sqrt(SPU *spu, stk_elem_t elem, bool has_arg) {
+SPUStatus spu_sqrt(SPU *spu, stk_elem_t elem) {
     assert(spu != NULL);
 
     StackStatus status = 0;
@@ -251,7 +235,6 @@ SPUStatus spu_sqrt(SPU *spu, stk_elem_t elem, bool has_arg) {
 
     return SPU_OK;
 }
-
 
 static SPUStatus spu_cond_jmp(SPU *spu, stk_elem_t res, Opcode opcode) {
     assert(spu != NULL);
@@ -291,26 +274,25 @@ static SPUStatus spu_cond_jmp(SPU *spu, stk_elem_t res, Opcode opcode) {
     return SPU_OK;
 }
 
-SPUStatus spu_je(SPU *spu, stk_elem_t res, bool has_arg) {
+SPUStatus spu_je(SPU *spu, stk_elem_t res) {
     return spu_cond_jmp(spu, res, ASM_JE);
 }
 
-SPUStatus spu_ja(SPU *spu, stk_elem_t res, bool has_arg) {
+SPUStatus spu_ja(SPU *spu, stk_elem_t res) {
     return spu_cond_jmp(spu, res, ASM_JA);
 }
 
-SPUStatus spu_jb(SPU *spu, stk_elem_t res, bool has_arg) {
+SPUStatus spu_jb(SPU *spu, stk_elem_t res) {
     return spu_cond_jmp(spu, res, ASM_JB);
 }
 
-SPUStatus spu_jae(SPU *spu, stk_elem_t res, bool has_arg) {
+SPUStatus spu_jae(SPU *spu, stk_elem_t res) {
     return spu_cond_jmp(spu, res, ASM_JAE);
 }
 
-SPUStatus spu_jbe(SPU *spu, stk_elem_t res, bool has_arg) {
+SPUStatus spu_jbe(SPU *spu, stk_elem_t res) {
     return spu_cond_jmp(spu, res, ASM_JBE);
 }
-
 
 SPUStatus spu_start(SPU *spu) {
     assert(spu != NULL);
@@ -326,7 +308,6 @@ SPUStatus spu_start(SPU *spu) {
 
         ArgTypeMask arg_type_mask = content[IP + 1];
         stk_elem_t arg = 0; // TODO: remove for ops without args
-        // TODO: has_arg is weird. it is very rarely used, non-effective
         memcpy(&arg, content + IP + 2, sizeof(stk_elem_t));
 
         if (opinfo.opcode == ASM_HLT)
@@ -337,7 +318,7 @@ SPUStatus spu_start(SPU *spu) {
 
         IP += 6;
 
-        SPUStatus status = opinfo.func(spu, arg, !(arg_type_mask & ARG_NONE));
+        SPUStatus status = opinfo.func(spu, arg);
         if (status != SPU_OK)
             return status;
     }

@@ -8,7 +8,7 @@
 OpInfo OPINFO_ARR[] = {
     {ASM_HLT, ARG_NONE, "hlt"},
     {ASM_PUSH, ARG_STK_ELEM | ARG_REG, "push", &spu_push},
-    {ASM_POP, ARG_STK_ELEM | ARG_REG, "pop", &spu_pop},
+    {ASM_POP, ARG_REG, "pop", &spu_pop},
     {ASM_MUL, ARG_NONE, "mul", &spu_mul},
     {ASM_ADD, ARG_NONE, "add", &spu_add},
     {ASM_SUB, ARG_NONE, "sub", &spu_sub},

@@ -35,7 +35,7 @@ hlt
     ; fib_-2
     push CX
     push 2
-    sub 2
+    sub
     pop DX
 
     call .fib_n
