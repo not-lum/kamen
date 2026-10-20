@@ -1,5 +1,9 @@
 ; Kvadratka on kamen
 ; (c) bazonavt aka not-lum
+; 0 0 0
+; 0 0 1
+; 1 0 -4
+; 0 5 10
 inp AX
 inp BX
 inp CX
@@ -51,6 +55,9 @@ je .one_root
 jmp .no_normal_solve
 
 .two_roots:
+    push 2
+    out
+
     ; x1 = (-b - sqrt(DX))/2a
     push 0
     push BX
@@ -87,6 +94,9 @@ jmp .no_normal_solve
     hlt
 
 .one_root:
+    push 1
+    out
+
     push 0
     push BX
     sub
@@ -101,6 +111,9 @@ jmp .no_normal_solve
     hlt
 
 .solve_simple:
+    push 1
+    out
+
     push 0
     push CX
     sub

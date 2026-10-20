@@ -33,8 +33,6 @@ int main(int argc, char **argv) {
         FAIL();
     }
 
-    // TODO: error handling
-
     stack_t stack = {};
     StackStatus stk_status = STACK_INIT_DBG(&stack, 0);
     if (stk_status != STACK_OK) {
@@ -64,7 +62,7 @@ int main(int argc, char **argv) {
     
     SPUStatus spu_status = spu_init(&spu, &code_file, &stack, &call_stack);
     if (spu_status != FS_OK) {
-        fprintf(stderr, "File error: %s\n", spu_error_str(spu_status));
+        fprintf(stderr, "SPU error: %s\n", spu_error_str(spu_status));
         exit_code = EXIT_SPU_INIT_FAIL;
 
         FAIL();

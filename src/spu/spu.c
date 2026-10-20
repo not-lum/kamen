@@ -64,6 +64,10 @@ SPUStatus spu_call(SPU *spu, stk_elem_t addr, bool has_arg) {
 
     IP = addr;
 
+    ON_DUMP_STACK(
+    dump_stack(&spu->stack, status);
+    )    
+
     return SPU_OK;
 }
 
@@ -75,6 +79,10 @@ SPUStatus spu_ret(SPU *spu, stk_elem_t _, bool has_arg) {
     if (status != STACK_OK) {
         return SPU_INTERNAL_POP_FAILED;
     }
+
+    ON_DUMP_STACK(
+    dump_stack(&spu->stack, status);
+    )
 
     return SPU_OK;
 }
@@ -131,9 +139,12 @@ SPUStatus spu_inp(SPU *spu, stk_elem_t res, bool has_arg) {
 
     StackStatus status = 0;
     stack_push(&spu->stack, input, &status);
-
     if (status != STACK_OK)
         return SPU_INTERNAL_PUSH_FAILED;
+
+    ON_DUMP_STACK(
+    dump_stack(&spu->stack, status);
+    )
 
     return SPU_OK;
 }
@@ -143,14 +154,13 @@ SPUStatus spu_out(SPU *spu, stk_elem_t res, bool has_arg) {
 
     StackStatus status = 0;
     stk_elem_t last_elem = stack_pop(&spu->stack, &status);
+    if (status != STACK_OK) {
+        return SPU_INTERNAL_POP_FAILED;
+    }
 
     ON_DUMP_STACK(
     dump_stack(&spu->stack, status);
     )
-
-    if (status != STACK_OK) {
-        return SPU_INTERNAL_POP_FAILED;
-    }
 
     ASM_OUT_print(last_elem);
 
@@ -315,7 +325,8 @@ SPUStatus spu_start(SPU *spu) {
         )
 
         ArgTypeMask arg_type_mask = content[IP + 1];
-        stk_elem_t arg = 0;
+        stk_elem_t arg = 0; // TODO: remove for ops without args
+        // TODO: has_arg is weird. it is very rarely used, non-effective
         memcpy(&arg, content + IP + 2, sizeof(stk_elem_t));
 
         if (opinfo.opcode == ASM_HLT)
