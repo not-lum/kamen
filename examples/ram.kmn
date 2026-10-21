@@ -1,0 +1,15 @@
+push 21
+set 67
+
+push [67]
+out
+
+push 123
+set 67
+push 12
+set 70
+
+push [67]
+out
+push [70]
+out

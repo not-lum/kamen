@@ -58,7 +58,7 @@ static bool is_empty_line(const char *str) {
     return str_starts_with(str, '\0');
 }
 
-static bool opcode_accepts_label(Opcode opcode) {
+static bool opcode_accepts_label(Opcode opcode) { //TODO: remove
     switch (opcode) {
         case ASM_JMP:
         case ASM_JE:
@@ -230,12 +230,14 @@ static bool find_label(ParsingContext *context, const char *name, stk_elem_t *ou
     return false;
 }
 
-static ParsingStatus parse_arg(ParsingContext *context,
-                               char arg_str[], char *bad_char,
+static ParsingStatus parse_arg(ParsingContext *context, char arg_str[],
+                               int *arg_len, char *bad_char,
                                int *bytes_parsed_arg) {
     assert(context != NULL);
+    assert(arg_len != NULL);
     assert(arg_str != NULL);
     assert(bad_char != NULL);
+    assert(bytes_parsed_arg != NULL);
 
     size_t *valid_chars = &context->curr_line_valid_chars;
     char *line = context->asm_file.index[context->curr_line_numb].addr;
@@ -243,8 +245,8 @@ static ParsingStatus parse_arg(ParsingContext *context,
     if (line[*valid_chars] == '\0') {
         return PARSING_UNABLE_TO_PARSE_ARG;
     } else {
-        size_t sscanf_args_numb = sscanf(line + *valid_chars, "%" MAX_ARG_LEN_STR "s %c%n",
-                                         arg_str, bad_char, bytes_parsed_arg);
+        size_t sscanf_args_numb = sscanf(line + *valid_chars, "%" MAX_ARG_LEN_STR "s%n %c%n",
+                                         arg_str, arg_len, bad_char, bytes_parsed_arg);
 
         if (sscanf_args_numb == 0)
             return PARSING_UNABLE_TO_PARSE_ARG;
@@ -264,7 +266,8 @@ static ParsingStatus parse_arg(ParsingContext *context,
 ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo *out_error_info) {
     assert(context != NULL);
     assert(instr != NULL);
-    assert(out_error_info != NULL);
+    assert(out_error_info != NULL); //TODO: could be NULL;
+                                    // parsing error info as additional param
 
     size_t *bytes_parsed_correctly = &context->curr_line_valid_chars;
     char *line = context->asm_file.index[context->curr_line_numb].addr;
@@ -280,9 +283,11 @@ ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo
         RETURN_ERROR(status);
 
     char bad_char = '\0';
-    char arg_str[MAX_ARG_LEN] = {};
+    char arg_str_arr[MAX_ARG_LEN] = {};
+    char *arg_str = arg_str_arr;
+    int arg_len = 0;
     int bytes_parsed_arg = 0;
-    status = parse_arg(context, arg_str, &bad_char, &bytes_parsed_arg);
+    status = parse_arg(context, arg_str_arr, &arg_len, &bad_char, &bytes_parsed_arg);
     if (status != PARSING_OK) {
         if (opinfo.allowed_arg_type & ARG_NONE) {
             if (check_for_bad_char(bad_char)) {
@@ -293,7 +298,7 @@ ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo
 
             instr->is_comment_or_label = false;
             instr->opcode = opinfo.opcode;
-            instr->arg_type_mask = ARG_NONE;
+            instr->arg_type_mask |= ARG_NONE;
             instr->arg_value = 0;
 
             RETURN_OK();
@@ -302,13 +307,20 @@ ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo
         }
     }
 
+    if ((opinfo.allowed_arg_type & ARG_RAM) && (arg_str[0] == '[') && (arg_str[arg_len - 1]) == ']') {
+        // fprintf(stderr, "[] used\n");
+        instr->arg_type_mask |= ARG_RAM;
+        arg_str[arg_len - 1] = '\0';
+        arg_str++;
+    }
+
     if ((opinfo.allowed_arg_type & ARG_STK_ELEM)) {
-        if (opcode_accepts_label(opinfo.opcode) && arg_str[0] == '.') {
+        if (opcode_accepts_label(opinfo.opcode) && arg_str[0] == '.') { // TODO: add ARG_LABELS
             stk_elem_t addr = 0;
             if (find_label(context, arg_str + 1, &addr)) {
                 instr->is_comment_or_label = false;
                 instr->opcode = opinfo.opcode;
-                instr->arg_type_mask = ARG_STK_ELEM;
+                instr->arg_type_mask |= ARG_STK_ELEM;
                 instr->arg_value = addr;
     
                 RETURN_OK();
@@ -334,7 +346,7 @@ ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo
                 
                 instr->is_comment_or_label = false;
                 instr->opcode = opinfo.opcode;
-                instr->arg_type_mask = ARG_STK_ELEM;
+                instr->arg_type_mask |= ARG_STK_ELEM;
                 instr->arg_value = (stk_elem_t)parsed_numb;
 
                 RETURN_OK();
@@ -359,7 +371,7 @@ ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo
 
         instr->is_comment_or_label = false;
         instr->opcode = opinfo.opcode;
-        instr->arg_type_mask = ARG_REG;
+        instr->arg_type_mask |= ARG_REG;
         instr->arg_value = (stk_elem_t)reginfo.regcode;
 
         RETURN_OK();

@@ -39,6 +39,9 @@ typedef enum {
     ASM_CALL,
     ASM_RET,
     ASM_SQRT,
+    ASM_SET,
+    ASM_DISP,
+    ASM_DISPRST,
 
     ASM_UNKNOWN,
 } Opcode;
@@ -48,6 +51,7 @@ typedef enum {
     ARG_NONE = 1,
     ARG_STK_ELEM = 1 << 1,
     ARG_REG = 1 << 2,
+    ARG_RAM = 1 << 3
 } ArgType;
 
 typedef uint8_t ArgTypeMask; 

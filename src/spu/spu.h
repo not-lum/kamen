@@ -19,6 +19,10 @@
 #   define ON_SPU_DEBUG(...)
 #endif
 
+#define RAM_HEIGHT 40
+#define RAM_WIDTH 40
+#define RAM_SIZE RAM_HEIGHT * RAM_WIDTH
+
 typedef LoadedFile Code;
 typedef stk_elem_t Register;
 
@@ -38,6 +42,7 @@ typedef struct SPU {
     stack_t stack;
     stack_t call_stack;
     Register regs[5]; // rip, rax, rbx, rcx, rdx
+    uint8_t ram[RAM_SIZE];
 } SPU;
 
 
@@ -46,20 +51,23 @@ SPUStatus spu_init(SPU *spu, LoadedFile *code, stack_t *stack, stack_t *call_sta
 SPUStatus spu_destroy(SPU *spu);
 SPUStatus spu_start(SPU *spu);
 
-SPUStatus spu_out(SPU *spu, stk_elem_t res);
-SPUStatus spu_inp(SPU *spu, stk_elem_t res);
-SPUStatus spu_pop(SPU *spu, stk_elem_t res);
-SPUStatus spu_push(SPU *spu, stk_elem_t res);
-SPUStatus spu_add(SPU *spu, stk_elem_t res);
-SPUStatus spu_sub(SPU *spu, stk_elem_t res);
-SPUStatus spu_mul(SPU *spu, stk_elem_t res);
-SPUStatus spu_div(SPU *spu, stk_elem_t res);
-SPUStatus spu_jmp(SPU *spu, stk_elem_t res);
-SPUStatus spu_je(SPU *spu, stk_elem_t res);
-SPUStatus spu_ja(SPU *spu, stk_elem_t res);
-SPUStatus spu_jb(SPU *spu, stk_elem_t res);
-SPUStatus spu_jae(SPU *spu, stk_elem_t res);
-SPUStatus spu_jbe(SPU *spu, stk_elem_t res);
-SPUStatus spu_call(SPU *spu, stk_elem_t res);
-SPUStatus spu_ret(SPU *spu, stk_elem_t res);
-SPUStatus spu_sqrt(SPU *spu, stk_elem_t elem);
+SPUStatus spu_out(SPU *, stk_elem_t);
+SPUStatus spu_inp(SPU *, stk_elem_t);
+SPUStatus spu_pop(SPU *, stk_elem_t);
+SPUStatus spu_push(SPU *, stk_elem_t);
+SPUStatus spu_add(SPU *, stk_elem_t);
+SPUStatus spu_sub(SPU *, stk_elem_t);
+SPUStatus spu_mul(SPU *, stk_elem_t);
+SPUStatus spu_div(SPU *, stk_elem_t);
+SPUStatus spu_jmp(SPU *, stk_elem_t);
+SPUStatus spu_je(SPU *, stk_elem_t);
+SPUStatus spu_ja(SPU *, stk_elem_t);
+SPUStatus spu_jb(SPU *, stk_elem_t);
+SPUStatus spu_jae(SPU *, stk_elem_t);
+SPUStatus spu_jbe(SPU *, stk_elem_t);
+SPUStatus spu_call(SPU *, stk_elem_t);
+SPUStatus spu_ret(SPU *, stk_elem_t);
+SPUStatus spu_sqrt(SPU *, stk_elem_t);
+SPUStatus spu_set(SPU *, stk_elem_t);
+SPUStatus spu_disp(SPU *, stk_elem_t);
+SPUStatus spu_disprst(SPU *, stk_elem_t);

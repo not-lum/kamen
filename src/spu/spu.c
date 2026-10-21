@@ -6,7 +6,7 @@
 #include <string.h>
 
 
-#define IP spu->regs[REG_IP]
+#define IP spu->regs[REG_IP] //TODO: IP(spu)
 
 const char *spu_error_str(SPUStatus status) {
     switch (status) {
@@ -71,7 +71,7 @@ SPUStatus spu_call(SPU *spu, stk_elem_t addr) {
     return SPU_OK;
 }
 
-SPUStatus spu_ret(SPU *spu, stk_elem_t elem) {
+SPUStatus spu_ret(SPU *spu, stk_elem_t _) {
     assert(spu != NULL);
 
     StackStatus status = 0;
@@ -86,7 +86,6 @@ SPUStatus spu_ret(SPU *spu, stk_elem_t elem) {
 
     return SPU_OK;
 }
-
 
 SPUStatus spu_push(SPU *spu, stk_elem_t elem) {
     assert(spu != NULL);
@@ -121,6 +120,46 @@ SPUStatus spu_pop(SPU *spu, stk_elem_t res) {
     return SPU_OK;
 }
 
+SPUStatus spu_set(SPU *spu, stk_elem_t res) {
+    assert(spu != NULL);
+    assert(res < RAM_SIZE);
+
+    StackStatus status = 0;
+    stk_elem_t value = stack_pop(&spu->stack, &status);
+    if (status != STACK_OK)
+        return SPU_INTERNAL_PUSH_FAILED;
+
+    spu->ram[res] = value;
+
+    return SPU_OK;
+}
+
+SPUStatus spu_disp(SPU *spu, stk_elem_t _) {
+    assert(spu != NULL);
+
+    for (size_t i = 0; i < RAM_SIZE; i++) {
+        if (spu->ram[i] == 0)
+            printf("  ");
+        else
+            printf("██");
+
+        if ((i + 1) % RAM_WIDTH == 0)
+            puts("");
+    }
+
+    return SPU_OK;
+}
+
+SPUStatus spu_disprst(SPU *spu, stk_elem_t _) {
+    assert(spu != NULL);
+
+    for (size_t i = 0; i < RAM_HEIGHT; i++) {
+        putc('\r', stdout);
+    }
+
+    return SPU_OK;
+}
+
 SPUStatus spu_inp(SPU *spu, stk_elem_t res) {
     assert(spu != NULL);
 
@@ -133,7 +172,7 @@ SPUStatus spu_inp(SPU *spu, stk_elem_t res) {
     return SPU_OK;
 }
 
-SPUStatus spu_out(SPU *spu, stk_elem_t res) {
+SPUStatus spu_out(SPU *spu, stk_elem_t _) {
     assert(spu != NULL);
 
     StackStatus status = 0;
@@ -191,22 +230,21 @@ static SPUStatus spu_bin_op(SPU *spu, Opcode opcode) {
     return SPU_OK;
 }
 
-SPUStatus spu_add(SPU *spu, stk_elem_t res) {
+SPUStatus spu_add(SPU *spu, stk_elem_t _) {
     return spu_bin_op(spu, ASM_ADD);
 }
 
-SPUStatus spu_sub(SPU *spu, stk_elem_t res) {
+SPUStatus spu_sub(SPU *spu, stk_elem_t _) {
     return spu_bin_op(spu, ASM_SUB);
 }
 
-SPUStatus spu_mul(SPU *spu, stk_elem_t res) {
+SPUStatus spu_mul(SPU *spu, stk_elem_t _) {
     return spu_bin_op(spu, ASM_MUL);
 }
 
-SPUStatus spu_div(SPU *spu, stk_elem_t res) {
+SPUStatus spu_div(SPU *spu, stk_elem_t _) {
     return spu_bin_op(spu, ASM_DIV);
 }
-
 
 SPUStatus spu_jmp(SPU *spu, stk_elem_t res) {
     assert(spu != NULL);
@@ -217,7 +255,7 @@ SPUStatus spu_jmp(SPU *spu, stk_elem_t res) {
 }
 
 
-SPUStatus spu_sqrt(SPU *spu, stk_elem_t elem) {
+SPUStatus spu_sqrt(SPU *spu, stk_elem_t _) {
     assert(spu != NULL);
 
     StackStatus status = 0;
@@ -313,8 +351,13 @@ SPUStatus spu_start(SPU *spu) {
         if (opinfo.opcode == ASM_HLT)
             break;
 
+
         if ((arg_type_mask & ARG_REG) && opinfo.opcode != ASM_POP && opinfo.opcode != ASM_INP)
             arg = spu->regs[arg];
+
+        if (arg_type_mask & ARG_RAM) {
+            arg = spu->ram[arg];
+        }
 
         IP += 6;
 
