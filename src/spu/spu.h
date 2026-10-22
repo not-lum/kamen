@@ -19,8 +19,8 @@
 #   define ON_SPU_DEBUG(...)
 #endif
 
-#define RAM_HEIGHT 40
-#define RAM_WIDTH 40
+#define RAM_HEIGHT 60
+#define RAM_WIDTH 80
 #define RAM_SIZE RAM_HEIGHT * RAM_WIDTH
 
 typedef LoadedFile Code;
@@ -71,3 +71,5 @@ SPUStatus spu_sqrt(SPU *, stk_elem_t);
 SPUStatus spu_set(SPU *, stk_elem_t);
 SPUStatus spu_disp(SPU *, stk_elem_t);
 SPUStatus spu_disprst(SPU *, stk_elem_t);
+SPUStatus spu_dispclr(SPU *, stk_elem_t);
+SPUStatus spu_sleep(SPU *, stk_elem_t);

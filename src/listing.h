@@ -42,6 +42,8 @@ typedef enum {
     ASM_SET,
     ASM_DISP,
     ASM_DISPRST,
+    ASM_DISPCLR,
+    ASM_SLEEP,
 
     ASM_UNKNOWN,
 } Opcode;

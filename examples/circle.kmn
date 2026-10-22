@@ -9,12 +9,12 @@ pop BX ; y = 0
 
 .loop:
     push CX
-    push 1600
+    push 4800
     je .end
 
-    ; (x - 12)^2 + (y - 12)^2 = 144
+    ; (x - 40)^2 + (y - 30)^2 = 144
     push AX
-    push 20
+    push 40
     sub
     pop AX
 
@@ -23,7 +23,7 @@ pop BX ; y = 0
     mul
 
     push BX
-    push 20
+    push 30
     sub
     pop BX
 
@@ -32,7 +32,7 @@ pop BX ; y = 0
     mul
 
     add
-    push 100
+    push 225
     jbe .fill_pixel
 .empty_pixel:
     push 0
@@ -50,18 +50,18 @@ pop BX ; y = 0
     pop CX
 
     push CX
-    push 40 ; row_size
+    push 80 ; row_size
     div  
-    pop BX ; y = CX / 15
+    pop BX ; y = CX / 80
 
     push CX
     
     push BX
-    push 40
+    push 80
     mul
 
     sub
-    pop AX ; x = CX - 15 * y
+    pop AX ; x = CX - 80 * y
 
     jmp .loop
 

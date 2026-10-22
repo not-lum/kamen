@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 
 #define IP spu->regs[REG_IP] //TODO: IP(spu)
@@ -137,6 +138,8 @@ SPUStatus spu_set(SPU *spu, stk_elem_t res) {
 SPUStatus spu_disp(SPU *spu, stk_elem_t _) {
     assert(spu != NULL);
 
+    printf("\033[?2026h");
+
     for (size_t i = 0; i < RAM_SIZE; i++) {
         if (spu->ram[i] == 0)
             printf("  ");
@@ -144,8 +147,19 @@ SPUStatus spu_disp(SPU *spu, stk_elem_t _) {
             printf("██");
 
         if ((i + 1) % RAM_WIDTH == 0)
-            puts("");
+            putchar('\n');
     }
+
+    printf("\033[?2026l");
+    // fflush(stdout);
+
+    return SPU_OK;
+}
+
+SPUStatus spu_dispclr(SPU *spu, stk_elem_t _) {
+    assert(spu != NULL);
+
+    printf("\033[2J");
 
     return SPU_OK;
 }
@@ -153,9 +167,16 @@ SPUStatus spu_disp(SPU *spu, stk_elem_t _) {
 SPUStatus spu_disprst(SPU *spu, stk_elem_t _) {
     assert(spu != NULL);
 
-    for (size_t i = 0; i < RAM_HEIGHT; i++) {
-        putc('\r', stdout);
-    }
+    printf("\033[H");
+
+    return SPU_OK;
+}
+
+SPUStatus spu_sleep(SPU* spu, stk_elem_t microsecs) {
+    assert(spu != NULL);
+    assert(microsecs >= 0);
+
+    usleep(microsecs);
 
     return SPU_OK;
 }
@@ -264,8 +285,6 @@ SPUStatus spu_sqrt(SPU *spu, stk_elem_t _) {
         return SPU_INTERNAL_POP_FAILED;
 
     stk_elem_t root = lround(sqrt(numb));
-    // fprintf(stderr, "orig_elem: %d\n", numb);
-    // fprintf(stderr, "sqrt_root: %d\n", root);
 
     stack_push(&spu->stack, root, &status);
     if (status != STACK_OK)

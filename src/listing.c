@@ -13,6 +13,8 @@ OpInfo OPINFO_ARR[] = {
     {ASM_SET    , ARG_STK_ELEM | ARG_REG | ARG_RAM, "set" , &spu_set},
     {ASM_DISP   , ARG_NONE                        , "disp", &spu_disp},
     {ASM_DISPRST, ARG_NONE                        , "disprst", &spu_disprst},
+    {ASM_DISPCLR, ARG_NONE                        , "dispclr", &spu_dispclr},
+    {ASM_SLEEP  , ARG_STK_ELEM | ARG_REG | ARG_RAM, "sleep", &spu_sleep},
     {ASM_MUL    , ARG_NONE                        , "mul" , &spu_mul},
     {ASM_ADD    , ARG_NONE                        , "add" , &spu_add},
     {ASM_SUB    , ARG_NONE                        , "sub" , &spu_sub},
