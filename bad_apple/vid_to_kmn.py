@@ -20,7 +20,7 @@ with open(sys.argv[2], "w") as f:
     old_frame = {}
     first_frame = True
 
-    for i in range(30 * 30):
+    while True:
         ret, frame = cap.read()
         if not ret:
             break
