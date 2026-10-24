@@ -23,15 +23,23 @@ const char *write_error_str(WriteStatus status) {
 
 static void write_instr_to(Instr *instr, FILE *to) {
     fwrite(&instr->opcode, sizeof(uint8_t), 1, to);
-    fwrite(&instr->arg_type_mask, sizeof(uint8_t), 1, to);
-    fwrite(&instr->arg_value, sizeof(stk_elem_t), 1, to);
+
+    if (instr->arg_type_mask != ARG_NONE) {
+        fwrite(&instr->arg_type_mask, sizeof(uint8_t), 1, to);
+        fwrite(&instr->arg_value, sizeof(stk_elem_t), 1, to);
+    }
 }
 
 
 static void list_instr_to(Instr *instr, FILE *to) {
-    fprintf(to, "%d", instr->opcode);
-    fprintf(to, "%d", instr->arg_type_mask);
-    fprintf(to, "%d\n", instr->arg_value);
+    fprintf(to, STK_ELEM_PRINTF_FMT, instr->opcode);
+
+    if (instr->arg_type_mask != ARG_NONE) {
+        fprintf(to, STK_ELEM_PRINTF_FMT, instr->arg_type_mask);
+        fprintf(to, STK_ELEM_PRINTF_FMT, instr->arg_value);
+    }
+
+    fputc('\n', to);
 }
 
 

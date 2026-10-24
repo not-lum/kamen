@@ -5,7 +5,6 @@
 #include "../../secstack/src/secstack.h"
 #include <stdint.h>
 
-
 #define MAX_OP_LEN 10
 #define MAX_ARG_LEN 30
 #define MAX_LABEL_LEN 30
@@ -22,7 +21,8 @@ typedef enum {
     PARSING_ARG_OUT_OF_RANGE,
     PARSING_BAD_OP_ARG,
     PARSING_UNABLE_TO_PARSE_ARG,
-    PARSING_EMPTY_LABEL
+    PARSING_EMPTY_LABEL,
+    PARSING_SQUARE_BRACKET_NOT_CLOSED
 } ParsingStatus;
 
 
@@ -33,7 +33,7 @@ typedef struct {
 } ParsingErrorInfo;
 
 typedef struct {
-    char label_name[MAX_LABEL_LEN];
+    char name[MAX_LABEL_LEN];
     stk_elem_t addr;
 } Label;
 
@@ -41,7 +41,7 @@ typedef struct {
     IndexedFile asm_file;
     Label labels[MAX_LABELS_NUMB];
     size_t labels_count;
-    size_t instrs_count; 
+    size_t bytecode_len;
     size_t curr_line_numb;
     size_t curr_line_valid_chars;
 } ParsingContext;

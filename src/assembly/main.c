@@ -22,7 +22,7 @@ typedef enum {
 
 int main(int argc, char **argv) {
     // TODO: add error handling
-    // TODO: Assembly context struct
+    // TODO: disable listing bufferisation: setvbuf 
 
     ExitCode exit_code = EXIT_OK;
     IndexedFile asm_file = {};
@@ -39,7 +39,8 @@ int main(int argc, char **argv) {
     FileStatus f_status = create_indexed_file(&asm_file, argv[1]);
     if (f_status != 0) {
         exit_code = EXIT_CANNOT_OPEN_INPUT_FILE;
-        fprintf(stderr, "Error while indexing file: %s\n", fs_error_str(f_status));
+        fprintf(stderr, "Error while indexing file '%s': %s\n",
+                argv[1], fs_error_str(f_status));
         FAIL();
     }
 

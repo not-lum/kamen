@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/time.h>
+#include <time.h>
 
 
 #define IP spu->regs[REG_IP] //TODO: IP(spu)
@@ -25,6 +27,12 @@ const char *spu_error_str(SPUStatus status) {
             return "SPU division by zero";
         case SPU_INPUT_FAILED:
             return "SPU failed to read input";
+        case SPU_BYTECODE_PREMATURE_END:
+            return "SPU bytecode ended prematurely";
+        case SPU_TIME_CALC_ERROR:
+            return "SPU time calculation error";
+        case SPU_SLEEP_ERROR:
+            return "SPU sleep error";
         default:
             return "unknown SPU error";
     }
@@ -40,6 +48,7 @@ SPUStatus spu_init(SPU *spu, Code *code, stack_t *stack, stack_t *call_stack) {
     spu->stack = *stack;
     spu->call_stack = *call_stack;
     memset(spu->regs, 0, sizeof(spu->regs));
+    spu->disp_fps = 30;
 
     return SPU_OK;
 }
@@ -123,7 +132,7 @@ SPUStatus spu_pop(SPU *spu, stk_elem_t res) {
 
 SPUStatus spu_set(SPU *spu, stk_elem_t res) {
     assert(spu != NULL);
-    assert(res < RAM_SIZE);
+    assert(res < RAM_SIZE); // TODO: raise error on this instead of using assert
 
     StackStatus status = 0;
     stk_elem_t value = stack_pop(&spu->stack, &status);
@@ -138,7 +147,12 @@ SPUStatus spu_set(SPU *spu, stk_elem_t res) {
 SPUStatus spu_disp(SPU *spu, stk_elem_t _) {
     assert(spu != NULL);
 
-    printf("\033[?2026h");
+    struct timeval start_tv, end_tv = {};
+
+    if (gettimeofday(&start_tv, NULL) != 0)
+        return SPU_TIME_CALC_ERROR;
+
+    printf("\033[?2026h\033[H");
 
     for (size_t i = 0; i < RAM_SIZE; i++) {
         if (spu->ram[i] == 0)
@@ -151,7 +165,29 @@ SPUStatus spu_disp(SPU *spu, stk_elem_t _) {
     }
 
     printf("\033[?2026l");
-    // fflush(stdout);
+
+    if (gettimeofday(&end_tv, NULL) != 0)
+        return SPU_TIME_CALC_ERROR;
+
+    int64_t time_to_sleep = 1000000000 / spu->disp_fps -
+                           (end_tv.tv_sec - start_tv.tv_sec) * 1000000000 -
+                           (end_tv.tv_usec - start_tv.tv_usec) * 1000 - DISP_DELAY;
+
+    struct timespec delay = {
+        .tv_sec = time_to_sleep / 1000000000,
+        .tv_nsec = time_to_sleep % 1000000000
+    };
+
+    if (nanosleep(&delay, NULL) != 0)
+        return SPU_SLEEP_ERROR;
+
+    return SPU_OK;
+}
+
+SPUStatus spu_dispfps(SPU *spu, stk_elem_t fps) {
+    assert(spu != NULL);
+
+    spu->disp_fps = fps;
 
     return SPU_OK;
 }
@@ -164,19 +200,17 @@ SPUStatus spu_dispclr(SPU *spu, stk_elem_t _) {
     return SPU_OK;
 }
 
-SPUStatus spu_disprst(SPU *spu, stk_elem_t _) {
-    assert(spu != NULL);
-
-    printf("\033[H");
-
-    return SPU_OK;
-}
-
 SPUStatus spu_sleep(SPU* spu, stk_elem_t microsecs) {
     assert(spu != NULL);
-    assert(microsecs >= 0);
+    assert(microsecs >= 0); // TODO: raise error on this instead of using assert
 
-    usleep(microsecs);
+    struct timespec delay = {
+        .tv_sec = microsecs / 1000000,
+        .tv_nsec = (microsecs % 1000000) * 1000
+    };
+
+    if (nanosleep(&delay, NULL) != 0)
+        return SPU_SLEEP_ERROR;
 
     return SPU_OK;
 }
@@ -185,7 +219,7 @@ SPUStatus spu_inp(SPU *spu, stk_elem_t res) {
     assert(spu != NULL);
 
     stk_elem_t input = 0;
-    if (scanf("%d", &input) != 1)
+    if (scanf(STK_ELEM_SCANF_FMT, &input) != 1)
         return SPU_INPUT_FAILED;
     
     spu->regs[res] = input;
@@ -357,19 +391,30 @@ SPUStatus spu_start(SPU *spu) {
     uint8_t *content = spu->code.content;
     size_t content_len = spu->code.content_len;
 
-    while (IP < content_len) {
+    while ((size_t)IP < content_len) {
         OpInfo opinfo = get_opinfo_by_opcode(content[IP]);
         ON_SPU_DEBUG(
         opcode_print(opinfo.opcode);
         )
 
-        ArgTypeMask arg_type_mask = content[IP + 1];
-        stk_elem_t arg = 0; // TODO: remove for ops without args
-        memcpy(&arg, content + IP + 2, sizeof(stk_elem_t));
-
         if (opinfo.opcode == ASM_HLT)
             break;
 
+        if (opinfo.allowed_arg_type == ARG_NONE) {
+            IP += INSTR_NO_ARG_SIZE;
+
+            opinfo.func(spu, 0);
+            continue;
+        }
+
+        // TODO: move spu funcs to shared place
+
+        if ((size_t)IP + 2 > content_len - 1)
+            return SPU_BYTECODE_PREMATURE_END;
+
+        ArgTypeMask arg_type_mask = content[IP + 1];
+        stk_elem_t arg = 0;
+        memcpy(&arg, content + IP + 2, sizeof(stk_elem_t));
 
         if ((arg_type_mask & ARG_REG) && opinfo.opcode != ASM_POP && opinfo.opcode != ASM_INP)
             arg = spu->regs[arg];
@@ -378,7 +423,7 @@ SPUStatus spu_start(SPU *spu) {
             arg = spu->ram[arg];
         }
 
-        IP += 6;
+        IP += INSTR_DEFAULT_SIZE;
 
         SPUStatus status = opinfo.func(spu, arg);
         if (status != SPU_OK)

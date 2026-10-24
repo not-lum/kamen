@@ -22,6 +22,8 @@
 #define RAM_HEIGHT 60
 #define RAM_WIDTH 80
 #define RAM_SIZE RAM_HEIGHT * RAM_WIDTH
+#define DISP_DELAY 300000
+
 
 typedef LoadedFile Code;
 typedef stk_elem_t Register;
@@ -33,7 +35,10 @@ typedef enum {
     SPU_INTERNAL_POP_FAILED,
     SPU_INTERNAL_PUSH_FAILED,
     SPU_DIVISION_BY_ZERO,
-    SPU_INPUT_FAILED
+    SPU_INPUT_FAILED,
+    SPU_BYTECODE_PREMATURE_END,
+    SPU_TIME_CALC_ERROR,
+    SPU_SLEEP_ERROR
 } SPUStatus;
 
 
@@ -43,6 +48,7 @@ typedef struct SPU {
     stack_t call_stack;
     Register regs[5]; // rip, rax, rbx, rcx, rdx
     uint8_t ram[RAM_SIZE];
+    uint8_t disp_fps;
 } SPU;
 
 
@@ -70,6 +76,6 @@ SPUStatus spu_ret(SPU *, stk_elem_t);
 SPUStatus spu_sqrt(SPU *, stk_elem_t);
 SPUStatus spu_set(SPU *, stk_elem_t);
 SPUStatus spu_disp(SPU *, stk_elem_t);
-SPUStatus spu_disprst(SPU *, stk_elem_t);
+SPUStatus spu_dispfps(SPU *, stk_elem_t);
 SPUStatus spu_dispclr(SPU *, stk_elem_t);
 SPUStatus spu_sleep(SPU *, stk_elem_t);

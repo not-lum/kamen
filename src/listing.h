@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <math.h>
 
+#define INSTR_DEFAULT_SIZE 1 + 1 + 4
+#define INSTR_NO_ARG_SIZE 1
 
 typedef enum {
     REG_IP = 0,
@@ -41,7 +43,7 @@ typedef enum {
     ASM_SQRT,
     ASM_SET,
     ASM_DISP,
-    ASM_DISPRST,
+    ASM_DISPFPS,
     ASM_DISPCLR,
     ASM_SLEEP,
 
@@ -53,7 +55,8 @@ typedef enum {
     ARG_NONE = 1,
     ARG_STK_ELEM = 1 << 1,
     ARG_REG = 1 << 2,
-    ARG_RAM = 1 << 3
+    ARG_RAM = 1 << 3,
+    ARG_LABEL = 1 << 4
 } ArgType;
 
 typedef uint8_t ArgTypeMask; 

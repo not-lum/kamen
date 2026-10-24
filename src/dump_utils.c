@@ -4,7 +4,7 @@
 #include <stdarg.h>
 
 void ASM_OUT_print(stk_elem_t last_elem) {
-    printf(ANSI_GREEN "OUTPUT: " ANSI_RESET "<" ANSI_YELLOW DBUG_PRINTF_LIT ANSI_RESET ">\n", last_elem);
+    printf(ANSI_GREEN "OUTPUT: " ANSI_RESET "<" ANSI_YELLOW STK_ELEM_PRINTF_FMT ANSI_RESET ">\n", last_elem);
 }
 
 void opcode_print(Opcode opcode) {
