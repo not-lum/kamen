@@ -9,8 +9,6 @@
 #include <assert.h>
 #include <string.h>
 
-#define SPU_LOG_FILE ".kamen_spu.log"
-
 typedef enum {
     EXIT_OK = 0,
     EXIT_BAD_ARGS,
