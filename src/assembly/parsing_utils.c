@@ -11,6 +11,19 @@
 #include <errno.h>
 #include <ctype.h>
 
+#define RETURN_ERROR(status) do { \
+    if (out_error_info != NULL) \
+        make_error_info(context, (status), out_error_info); \
+    \
+    return status; \
+} while (0)
+
+#define RETURN_OK() do { \
+    context->curr_line_numb++; \
+    context->curr_line_valid_chars = 0; \
+    return PARSING_OK; \
+} while (0)
+
 
 const char *parsing_error_str(ParsingStatus status) {
     switch (status) {
@@ -145,8 +158,10 @@ static ParsingStatus parse_op(ParsingContext *context, OpInfo *out_opinfo) {
     char op_str[MAX_OP_LEN] = {};
     int bytes_read_op = 0;
 
-    size_t sscanf_args_numb = sscanf(line, " %" MAX_OP_LEN_STR "s %n",
-                                     op_str, &bytes_read_op);
+    int spaces_numb = 0;
+    size_t sscanf_args_numb = sscanf(line, " %n%" MAX_OP_LEN_STR "s %n",
+                                     &spaces_numb, op_str, &bytes_read_op);
+    *valid_chars += spaces_numb;
 
     if (sscanf_args_numb != 1)
         return PARSING_CANNOT_PARSE_OP;
@@ -165,7 +180,7 @@ static ParsingStatus parse_op(ParsingContext *context, OpInfo *out_opinfo) {
     if (opinfo.opcode == ASM_UNKNOWN)
         return PARSING_UNKNOWN_OP;
 
-    *valid_chars += bytes_read_op;
+    *valid_chars += bytes_read_op - spaces_numb;
 
     *out_opinfo = opinfo;
 
@@ -173,9 +188,8 @@ static ParsingStatus parse_op(ParsingContext *context, OpInfo *out_opinfo) {
 }
 
 
-ParsingStatus collect_labels(ParsingContext *context, ParsingErrorInfo *error_info) {
+ParsingStatus collect_labels(ParsingContext *context, ParsingErrorInfo *out_error_info) {
     assert(context != NULL);
-    assert(error_info != NULL);
 
     while (context->curr_line_numb < context->asm_file.lines_numb) {
         char *line = context->asm_file.index[context->curr_line_numb].addr;
@@ -183,15 +197,13 @@ ParsingStatus collect_labels(ParsingContext *context, ParsingErrorInfo *error_in
         if (is_label(line)) {
             ParsingStatus status = parse_label(context);
             if (status != PARSING_OK) {
-                make_error_info(context, status, error_info);
-
-                return status;
+                RETURN_ERROR(status);
             }
         } else if (!is_comment(line) && !is_empty_line(line)) {
             OpInfo opinfo = {};
             ParsingStatus status = parse_op(context, &opinfo);
             if (status != PARSING_OK)
-                return status;
+                RETURN_ERROR(status);
 
             if (opinfo.allowed_arg_type == ARG_NONE)
                 context->bytecode_len += INSTR_NO_ARG_SIZE;
@@ -255,18 +267,6 @@ static ParsingStatus parse_arg(ParsingContext *context, char arg_str[],
     return PARSING_OK;
 }
 
-#define RETURN_ERROR(status) do { \
-    if (out_error_info != NULL) \
-        make_error_info(context, (status), out_error_info); \
-    \
-    return status; \
-} while (0)
-
-#define RETURN_OK() do { \
-    context->curr_line_numb++; \
-    context->curr_line_valid_chars = 0; \
-    return PARSING_OK; \
-} while (0)
 
 ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo *out_error_info) {
     assert(context != NULL);
@@ -277,14 +277,16 @@ ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo
     char *line = context->asm_file.index[context->curr_line_numb].addr;
 
     if (is_comment(line) || is_label(line) || is_empty_line(line)) {
-        instr->is_comment_or_label = true; // TODO: change field name
+        instr->is_not_code = true;
         RETURN_OK();
     }
 
     OpInfo opinfo = {};
     ParsingStatus status = parse_op(context, &opinfo);
-    if (status != PARSING_OK)
+    if (status != PARSING_OK) {
+        // fprintf(stderr, "OP Error\n");
         RETURN_ERROR(status);
+    }
 
     char bad_char = '\0';
     char arg_str_arr[MAX_ARG_LEN] = {};
@@ -300,7 +302,7 @@ ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo
                 RETURN_ERROR(PARSING_BAD_CHAR);
             }
 
-            instr->is_comment_or_label = false;
+            instr->is_not_code = false;
             instr->opcode = opinfo.opcode;
             instr->arg_type_mask |= ARG_NONE;
             instr->arg_value = 0;
@@ -320,7 +322,7 @@ ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo
                 RETURN_ERROR(PARSING_BAD_CHAR);
             }
 
-            instr->is_comment_or_label = false;
+            instr->is_not_code = false;
             instr->opcode = opinfo.opcode;
             instr->arg_type_mask = ARG_STK_ELEM;
             instr->arg_value = addr;
@@ -329,10 +331,9 @@ ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo
         }  
     }
 
-    if ((opinfo.allowed_arg_type & ARG_RAM) && (arg_str[0] == '[') && (arg_str[arg_len - 1] == ']')) {
+    if ((opinfo.allowed_arg_type & ARG_RAM) && (arg_str[0] == '[')) {
         if (arg_str[arg_len - 1] != ']')
             RETURN_ERROR(PARSING_SQUARE_BRACKET_NOT_CLOSED);
-        // fprintf(stderr, "[] used\n");
         instr->arg_type_mask |= ARG_RAM;
         arg_str[arg_len - 1] = '\0';
         arg_str++;
@@ -356,7 +357,7 @@ ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo
                 RETURN_ERROR(PARSING_BAD_CHAR);
             }
             
-            instr->is_comment_or_label = false;
+            instr->is_not_code = false;
             instr->opcode = opinfo.opcode;
             instr->arg_type_mask |= ARG_STK_ELEM;
             instr->arg_value = (stk_elem_t)parsed_numb;
@@ -380,7 +381,7 @@ ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo
             RETURN_ERROR(PARSING_BAD_CHAR);
         }
 
-        instr->is_comment_or_label = false;
+        instr->is_not_code = false;
         instr->opcode = opinfo.opcode;
         instr->arg_type_mask |= ARG_REG;
         instr->arg_value = (stk_elem_t)reginfo.regcode;

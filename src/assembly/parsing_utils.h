@@ -47,7 +47,7 @@ typedef struct {
 } ParsingContext;
 
 typedef struct {
-    bool is_comment_or_label;
+    bool is_not_code;
     Opcode opcode;
     ArgTypeMask arg_type_mask;
     stk_elem_t arg_value;

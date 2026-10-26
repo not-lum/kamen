@@ -1,4 +1,5 @@
 /.kamen_spu.log
+/run_bad_apple.sh
 /.kamen_listing.log
 /.secstack.log
 /src/assembly/main_old.c

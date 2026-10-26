@@ -62,6 +62,7 @@ WriteStatus assembly_indexed_file(IndexedFile *idx_file,
     ParsingContext parsing_context = {.asm_file = *idx_file};
     ParsingStatus status = collect_labels(&parsing_context, error_info);
     if (status != PARSING_OK) {
+        // fprintf(stderr, "collect error\n");
         fclose(bcode_file);
         fclose(listing_file);
 
@@ -85,9 +86,9 @@ WriteStatus assembly_indexed_file(IndexedFile *idx_file,
 
         // fprintf(stderr, "curr_line: %zu\n", parsing_context.curr_line_numb);
         // fprintf(stderr, "curr_line: %zu\n", parsing_context.curr_line_numb);
-        // TODO: add error handling for these:
+        // TODO: add error handling for these
 
-        if (!instr.is_comment_or_label) {
+        if (!instr.is_not_code) {
             write_instr_to(&instr, bcode_file);
             list_instr_to(&instr, listing_file);
         }
