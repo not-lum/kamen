@@ -277,7 +277,7 @@ ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo
     char *line = context->asm_file.index[context->curr_line_numb].addr;
 
     if (is_comment(line) || is_label(line) || is_empty_line(line)) {
-        instr->is_comment_or_label = true;
+        instr->is_comment_or_label = true; // TODO: change field name
         RETURN_OK();
     }
 

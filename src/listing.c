@@ -34,19 +34,6 @@ OpInfo OPINFO_ARR[] = {
     {ASM_UNKNOWN, ARG_NONE                          , ""       , NULL}
 };
 
-// TODO:
-// 1 var
-// switch (hash(str))
-// case hash_push:
-
-// 2 var
-// opinfo: {push, hash_push} -- compile time
-// util: sort opinfo -- runtime
-
-// 3 var 
-// script 
-
-
 RegInfo REGINFO_ARR[] = {
     {REG_IP     , "IP"},
     {REG_AX     , "AX"},

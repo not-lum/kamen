@@ -19,5 +19,13 @@
 
 #define ANSI_RESET "\e[0m"
 
+typedef enum {
+    INFO = 0,
+    ERROR
+} LogLevel;
+
 void ASM_OUT_print(stk_elem_t last_elem);
-void opcode_print(Opcode opcode); 
+void log_instr(FILE *to, OpInfo opinfo, ArgTypeMask arg_mask, stk_elem_t arg);
+void log_msg(FILE *to, LogLevel level, const char *fmt, ...);
+void log_header(FILE *to, LogLevel level);
+void init_spu_dbg_file(SPU* spu, const char *filename);

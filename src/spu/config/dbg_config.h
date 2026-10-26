@@ -1,0 +1,3 @@
+// #define KAMEN_SPU_DBG_STDERR
+#define KAMEN_SPU_DBG
+// #define KAMEN_DUMP_STACK

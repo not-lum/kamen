@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <string.h>
 
+#define SPU_LOG_FILE ".kamen_spu.log"
 
 typedef enum {
     EXIT_OK = 0,
@@ -62,7 +63,8 @@ int main(int argc, char **argv) {
         FAIL();
     }
     
-    SPUStatus spu_status = spu_init(&spu, &code_file, &stack, &call_stack);
+    SPUStatus spu_status = spu_init(&spu, &code_file, &stack, &call_stack
+                                    ON_SPU_DEBUG(, SPU_LOG_FILE));
     if (spu_status != SPU_OK) {
         fprintf(stderr, "SPU error: %s\n", spu_error_str(spu_status));
         exit_code = EXIT_SPU_INIT_FAIL;

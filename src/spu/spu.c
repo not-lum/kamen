@@ -9,36 +9,53 @@
 #include <time.h>
 
 
-#define IP spu->regs[REG_IP] //TODO: IP(spu)
+#define IP(spu) (spu)->regs[REG_IP]
+
+#define CHECK_REG_IS_VALID(reg_ind) do { \
+    if ((reg_ind) < 0 || (reg_ind) >= REGS_COUNT) \
+        return SPU_INVALID_REGISTER_INDEX; \
+} while (0)
+
+#define CHECK_RAM_ADDR_IS_VALID(addr) do { \
+    if ((addr) >= RAM_SIZE || (addr) < 0) \
+        return SPU_SET_ARG_OUT_OF_RANGE; \
+} while (0)
 
 const char *spu_error_str(SPUStatus status) {
     switch (status) {
         case SPU_OK:
             return "SPU ok";
         case SPU_PUSH_FAILED:
-            return "SPU failed while doing 'push'";
+            return "failed while doing 'push'";
         case SPU_POP_FAILED:
-            return "SPU failed while doing 'pop'";
+            return "failed while doing 'pop'";
         case SPU_INTERNAL_POP_FAILED:
-            return "SPU failed while doing internal 'pop'";
+            return "failed while doing internal 'pop'";
         case SPU_INTERNAL_PUSH_FAILED:
-            return "SPU failed while doing internal 'push'";
+            return "failed while doing internal 'push'";
         case SPU_DIVISION_BY_ZERO:
-            return "SPU division by zero";
+            return "division by zero";
         case SPU_INPUT_FAILED:
-            return "SPU failed to read input";
+            return "failed to read input";
         case SPU_BYTECODE_PREMATURE_END:
-            return "SPU bytecode ended prematurely";
+            return "bytecode ended prematurely";
         case SPU_TIME_CALC_ERROR:
-            return "SPU time calculation error";
+            return "time calculation error";
         case SPU_SLEEP_ERROR:
-            return "SPU sleep error";
+            return "sleep error";
+        case SPU_SLEEP_ARG_LESS_THAN_ZERO:
+            return "sleep argument is less than zero";
+        case SPU_SET_ARG_OUT_OF_RANGE:
+            return "set argument out of range";
+        case SPU_INVALID_REGISTER_INDEX:
+            return "attempted to access non-existent register";
         default:
             return "unknown SPU error";
     }
 }
 
-SPUStatus spu_init(SPU *spu, Code *code, stack_t *stack, stack_t *call_stack) {
+SPUStatus spu_init(SPU *spu, Code *code, stack_t *stack, stack_t *call_stack
+                   ON_SPU_DEBUG(, const char* _dbg_logfile)) {
     assert(spu != NULL);
     assert(code != NULL);
     assert(stack != NULL);
@@ -47,8 +64,11 @@ SPUStatus spu_init(SPU *spu, Code *code, stack_t *stack, stack_t *call_stack) {
     spu->code = *code;
     spu->stack = *stack;
     spu->call_stack = *call_stack;
-    memset(spu->regs, 0, sizeof(spu->regs));
     spu->disp_fps = 30;
+
+    ON_SPU_DEBUG(
+    init_spu_dbg_file(spu, _dbg_logfile);
+    )
 
     return SPU_OK;
 }
@@ -60,6 +80,10 @@ SPUStatus spu_destroy(SPU *spu) {
     stack_destroy(&spu->stack);
     stack_destroy(&spu->call_stack);
 
+    ON_SPU_DEBUG(
+    fclose(spu->_dbg_logfile);
+    )
+
     return SPU_OK;
 }
 
@@ -67,12 +91,12 @@ SPUStatus spu_call(SPU *spu, stk_elem_t addr) {
     assert(spu != NULL);
 
     StackStatus status = 0;
-    stack_push(&spu->call_stack, IP, &status);
+    stack_push(&spu->call_stack, IP(spu), &status);
     if (status != STACK_OK) {
         return SPU_INTERNAL_PUSH_FAILED;
     }
 
-    IP = addr;
+    IP(spu) = addr;
 
     ON_DUMP_STACK(
     dump_stack(&spu->stack, status);
@@ -85,7 +109,7 @@ SPUStatus spu_ret(SPU *spu, stk_elem_t _) {
     assert(spu != NULL);
 
     StackStatus status = 0;
-    IP = stack_pop(&spu->call_stack, &status);
+    IP(spu) = stack_pop(&spu->call_stack, &status);
     if (status != STACK_OK) {
         return SPU_INTERNAL_POP_FAILED;
     }
@@ -113,11 +137,12 @@ SPUStatus spu_push(SPU *spu, stk_elem_t elem) {
     return SPU_OK;
 }
 
-SPUStatus spu_pop(SPU *spu, stk_elem_t res) {
+SPUStatus spu_pop(SPU *spu, stk_elem_t reg_ind) {
     assert(spu != NULL);
+    CHECK_REG_IS_VALID(reg_ind);
 
     StackStatus status = 0;
-    spu->regs[res] = stack_pop(&spu->stack, &status);
+    spu->regs[reg_ind] = stack_pop(&spu->stack, &status);
 
     ON_DUMP_STACK(
     dump_stack(&spu->stack, status);
@@ -130,16 +155,16 @@ SPUStatus spu_pop(SPU *spu, stk_elem_t res) {
     return SPU_OK;
 }
 
-SPUStatus spu_set(SPU *spu, stk_elem_t res) {
+SPUStatus spu_set(SPU *spu, stk_elem_t ram_addr) {
     assert(spu != NULL);
-    assert(res < RAM_SIZE); // TODO: raise error on this instead of using assert
+    CHECK_RAM_ADDR_IS_VALID(ram_addr);
 
     StackStatus status = 0;
     stk_elem_t value = stack_pop(&spu->stack, &status);
     if (status != STACK_OK)
         return SPU_INTERNAL_PUSH_FAILED;
 
-    spu->ram[res] = value;
+    spu->ram[ram_addr] = value;
 
     return SPU_OK;
 }
@@ -169,6 +194,7 @@ SPUStatus spu_disp(SPU *spu, stk_elem_t _) {
     if (gettimeofday(&end_tv, NULL) != 0)
         return SPU_TIME_CALC_ERROR;
 
+    // TODO: int overflow prevention checks
     int64_t time_to_sleep = 1000000000 / spu->disp_fps -
                            (end_tv.tv_sec - start_tv.tv_sec) * 1000000000 -
                            (end_tv.tv_usec - start_tv.tv_usec) * 1000 - DISP_DELAY;
@@ -202,7 +228,9 @@ SPUStatus spu_dispclr(SPU *spu, stk_elem_t _) {
 
 SPUStatus spu_sleep(SPU* spu, stk_elem_t microsecs) {
     assert(spu != NULL);
-    assert(microsecs >= 0); // TODO: raise error on this instead of using assert
+
+    if (microsecs < 0)
+        return SPU_SLEEP_ARG_LESS_THAN_ZERO;
 
     struct timespec delay = {
         .tv_sec = microsecs / 1000000,
@@ -215,14 +243,15 @@ SPUStatus spu_sleep(SPU* spu, stk_elem_t microsecs) {
     return SPU_OK;
 }
 
-SPUStatus spu_inp(SPU *spu, stk_elem_t res) {
+SPUStatus spu_inp(SPU *spu, stk_elem_t reg_ind) {
     assert(spu != NULL);
+    CHECK_REG_IS_VALID(reg_ind);
 
     stk_elem_t input = 0;
     if (scanf(STK_ELEM_SCANF_FMT, &input) != 1)
         return SPU_INPUT_FAILED;
     
-    spu->regs[res] = input;
+    spu->regs[reg_ind] = input;
 
     return SPU_OK;
 }
@@ -304,11 +333,10 @@ SPUStatus spu_div(SPU *spu, stk_elem_t _) {
 SPUStatus spu_jmp(SPU *spu, stk_elem_t res) {
     assert(spu != NULL);
 
-    IP = res;
+    IP(spu) = res;
 
     return SPU_OK;
 }
-
 
 SPUStatus spu_sqrt(SPU *spu, stk_elem_t _) {
     assert(spu != NULL);
@@ -360,7 +388,7 @@ static SPUStatus spu_cond_jmp(SPU *spu, stk_elem_t res, Opcode opcode) {
     }
 
     if (should_jmp)
-        IP = res;
+        IP(spu) = res;
 
     return SPU_OK;
 }
@@ -385,23 +413,29 @@ SPUStatus spu_jbe(SPU *spu, stk_elem_t res) {
     return spu_cond_jmp(spu, res, ASM_JBE);
 }
 
+
 SPUStatus spu_start(SPU *spu) {
     assert(spu != NULL);
     
     uint8_t *content = spu->code.content;
     size_t content_len = spu->code.content_len;
 
-    while ((size_t)IP < content_len) {
-        OpInfo opinfo = get_opinfo_by_opcode(content[IP]);
-        ON_SPU_DEBUG(
-        opcode_print(opinfo.opcode);
-        )
+    while ((size_t)IP(spu) < content_len) {
+        OpInfo opinfo = get_opinfo_by_opcode(content[IP(spu)]);
 
         if (opinfo.opcode == ASM_HLT)
             break;
 
         if (opinfo.allowed_arg_type == ARG_NONE) {
-            IP += INSTR_NO_ARG_SIZE;
+            ON_SPU_DEBUG(
+            log_instr(spu->_dbg_logfile, opinfo, ARG_NONE, 0);
+            )
+
+            ON_SPU_DEBUG_STDERR(
+            log_instr(stderr, opinfo, ARG_NONE, 0);
+            )
+    
+            IP(spu) += INSTR_NO_ARG_SIZE;
 
             opinfo.func(spu, 0);
             continue;
@@ -409,21 +443,32 @@ SPUStatus spu_start(SPU *spu) {
 
         // TODO: move spu funcs to shared place
 
-        if ((size_t)IP + 2 > content_len - 1)
+        if ((size_t)IP(spu) + 2 > content_len - 1)
             return SPU_BYTECODE_PREMATURE_END;
 
-        ArgTypeMask arg_type_mask = content[IP + 1];
+        ArgTypeMask arg_type_mask = content[IP(spu) + 1];
         stk_elem_t arg = 0;
-        memcpy(&arg, content + IP + 2, sizeof(stk_elem_t));
+        memcpy(&arg, content + IP(spu) + 2, sizeof(stk_elem_t));
 
-        if ((arg_type_mask & ARG_REG) && opinfo.opcode != ASM_POP && opinfo.opcode != ASM_INP)
+        ON_SPU_DEBUG(
+        log_instr(spu->_dbg_logfile, opinfo, arg_type_mask, arg);
+        )
+
+        ON_SPU_DEBUG_STDERR(
+        log_instr(stderr, opinfo, arg_type_mask, arg);
+        )
+
+        if ((arg_type_mask & ARG_REG) && opinfo.opcode != ASM_POP && opinfo.opcode != ASM_INP) {
+            CHECK_REG_IS_VALID(arg);
             arg = spu->regs[arg];
+        }
 
         if (arg_type_mask & ARG_RAM) {
+            CHECK_RAM_ADDR_IS_VALID(arg);
             arg = spu->ram[arg];
         }
 
-        IP += INSTR_DEFAULT_SIZE;
+        IP(spu) += INSTR_DEFAULT_SIZE;
 
         SPUStatus status = opinfo.func(spu, arg);
         if (status != SPU_OK)
