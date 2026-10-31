@@ -3,7 +3,7 @@
 #include <ctype.h>
 #include <string.h>
 
-// TODO: labels array in heap
+
 static ParsingStatus add_label(ParsingContext *ctx, Label label) {
     assert(ctx != NULL);
 
@@ -12,7 +12,6 @@ static ParsingStatus add_label(ParsingContext *ctx, Label label) {
 
     return PARSING_OK;
 }
-
 
 ParsingStatus parse_label(ParsingContext *ctx, Label *out_label) {
     assert(ctx != NULL);

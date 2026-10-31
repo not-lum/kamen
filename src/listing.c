@@ -48,7 +48,6 @@ RegInfo REGINFO_ARR[] = {
 
 OpInfo get_opinfo_by_str(const char *str_repr) {
     assert(str_repr != NULL);
-    // TODO: add hashes
     for (size_t i = 0; i < sizeof(OPINFO_ARR) / sizeof(OPINFO_ARR[0]); i++) {
         if (strcasecmp(OPINFO_ARR[i].str_repr, str_repr) == 0) {
             return OPINFO_ARR[i];
@@ -61,7 +60,7 @@ OpInfo get_opinfo_by_str(const char *str_repr) {
 
 
 OpInfo get_opinfo_by_opcode(Opcode opcode) {
-    // TODO: index by opcode cmd
+    // TODO: index by opcode cmd - DONE
     
     return OPINFO_ARR[opcode];
 }

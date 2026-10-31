@@ -115,7 +115,6 @@ SPUStatus spu_disp(SPU *spu, stk_elem_t _) {
     if (gettimeofday(&end_tv, NULL) != 0)
         return SPU_TIME_CALC_ERROR;
 
-    // TODO: int overflow prevention checks
     int64_t time_to_sleep = 1000000000 / spu->disp_fps -
                            (end_tv.tv_sec - start_tv.tv_sec) * 1000000000 -
                            (end_tv.tv_usec - start_tv.tv_usec) * 1000 - DISP_DELAY;

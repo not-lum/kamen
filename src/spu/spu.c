@@ -6,9 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// TODO: cool dump and logs
-// TODO: binary signature
-
 
 const char *spu_error_str(SPUStatus status) {
     switch (status) {
@@ -173,9 +170,7 @@ SPUStatus exec_instr(SPU *spu, DecodedInstr *instr) {
 SPUStatus spu_start(SPU *spu) {
     assert(spu != NULL);
 
-    // TODO: add binary signature
-    // TODO: separate this into funcs
-    // TODO: arg types in byte with opcode
+    // TODO: separate this into funcs - DONE
 
     SPUStatus status = parse_header(spu);
     if (status != SPU_OK)

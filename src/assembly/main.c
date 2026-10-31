@@ -21,8 +21,6 @@ typedef enum {
 
 
 int main(int argc, char **argv) {
-    // TODO: disable listing bufferisation: setvbuf 
-
     ExitCode exit_code = EXIT_OK;
     IndexedFile asm_file = {};
 
