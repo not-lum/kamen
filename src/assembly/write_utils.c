@@ -86,9 +86,8 @@ WriteStatus assembly_indexed_file(IndexedFile *idx_file,
 
         // fprintf(stderr, "curr_line: %zu\n", parsing_context.curr_line_numb);
         // fprintf(stderr, "curr_line: %zu\n", parsing_context.curr_line_numb);
-        // TODO: add error handling for these
 
-        if (!instr.is_not_code) {
+        if (!instr.is_blank) {
             write_instr_to(&instr, bcode_file);
             list_instr_to(&instr, listing_file);
         }

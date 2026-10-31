@@ -13,23 +13,29 @@
 #define MAX_ARG_LEN_STR "29" // 30-1=29 (null byte doesn't count)
 #define MAX_LABEL_LEN_STR "29" // 30-1=29 (null byte doesn't count)
 
+// DSL
+
 typedef enum {
     PARSING_OK = 0,
     PARSING_CANNOT_PARSE_OP,
     PARSING_UNKNOWN_OP,
     PARSING_BAD_CHAR,
     PARSING_ARG_OUT_OF_RANGE,
-    PARSING_BAD_OP_ARG,
     PARSING_UNABLE_TO_PARSE_ARG,
     PARSING_EMPTY_LABEL,
-    PARSING_SQUARE_BRACKET_NOT_CLOSED
+    PARSING_SQUARE_BRACKET_NOT_CLOSED,
+    PARSING_UNKNOWN_LABEL,
+    PARSING_NOT_A_NUMBER,
+    PARSING_BAD_NUMBER,
+    PARSING_LABEL_DOESNT_END_WITH_COLON
 } ParsingStatus;
 
 
 typedef struct {
     const char* msg;
-    size_t line;
-    size_t numb_of_bad_char;
+    char *line;
+    size_t line_index;
+    size_t column;
 } ParsingErrorInfo;
 
 typedef struct {
@@ -37,23 +43,45 @@ typedef struct {
     stk_elem_t addr;
 } Label;
 
+// TODO: move some of these to separate files
+
+typedef struct {
+    char *str;
+    int len;
+} ArgStr;
+
 typedef struct {
     IndexedFile asm_file;
     Label labels[MAX_LABELS_NUMB];
     size_t labels_count;
     size_t bytecode_len;
-    size_t curr_line_numb;
-    size_t curr_line_valid_chars;
+
+    size_t line_index;
+    size_t column;
 } ParsingContext;
 
 typedef struct {
-    bool is_not_code;
+    bool is_blank;
     Opcode opcode;
     ArgTypeMask arg_type_mask;
     stk_elem_t arg_value;
 } Instr;
 
 const char *parsing_error_str(ParsingStatus status);
+void print_parsing_error(ParsingErrorInfo error_info);
+void make_error_info(ParsingContext *, ParsingStatus, ParsingErrorInfo *);
+
 ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo *out_error_info);
-void print_parsing_error(ParsingErrorInfo error_info, IndexedFile asm_file);
+ParsingStatus parse_op(ParsingContext *, OpInfo *);
+ParsingStatus parse_arg(ParsingContext *, ArgTypeMask, Instr *);
+
 ParsingStatus collect_labels(ParsingContext *context, ParsingErrorInfo *error_info);
+ParsingStatus add_label(ParsingContext *, Label);
+ParsingStatus parse_label(ParsingContext *, Label *);
+bool find_label(ParsingContext *, const char *, stk_elem_t *);
+
+bool is_comment(const char *);
+bool is_label(const char *);
+bool is_empty_line(const char *);
+
+bool detect_bad_char(ParsingContext *ctx, char *str);

@@ -21,7 +21,6 @@ typedef enum {
 
 
 int main(int argc, char **argv) {
-    // TODO: add error handling
     // TODO: disable listing bufferisation: setvbuf 
 
     ExitCode exit_code = EXIT_OK;
@@ -51,7 +50,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Error while assembling: %s\n", write_error_str(w_status));
 
         if (w_status == WRITE_ERROR_WHILE_PARSING) {
-            print_parsing_error(error_info, asm_file);
+            print_parsing_error(error_info);
         }
 
 

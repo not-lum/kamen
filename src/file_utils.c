@@ -150,6 +150,13 @@ FileStatus create_indexed_file(IndexedFile *out_idx_file, const char *filename) 
 }
 
 
+char *indexed_file_get_line(IndexedFile *idx_file, size_t line_index) {
+    assert(idx_file != NULL);
+
+    return idx_file->index[line_index].addr;
+}
+
+
 void destroy_loaded_file(LoadedFile *out_l_file) {
     free(out_l_file->content);
     out_l_file->content_len = 0;

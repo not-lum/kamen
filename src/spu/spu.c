@@ -9,6 +9,9 @@
 #include <time.h>
 
 
+// TODO: cool dump and logs
+// TODO: binary signature
+
 #define IP(spu) (spu)->regs[REG_IP]
 
 #define CHECK_REG_IS_VALID(reg_ind) do { \
@@ -415,6 +418,10 @@ SPUStatus spu_jbe(SPU *spu, stk_elem_t res) {
 
 
 SPUStatus spu_start(SPU *spu) {
+    // TODO: add binary signature
+    // TODO: separate this into funcs
+    // TODO: arg types in byte with opcode
+
     assert(spu != NULL);
     
     uint8_t *content = spu->code.content;
@@ -441,12 +448,10 @@ SPUStatus spu_start(SPU *spu) {
             continue;
         }
 
-        // TODO: move spu funcs to shared place
-
         if ((size_t)IP(spu) + 2 > content_len - 1)
             return SPU_BYTECODE_PREMATURE_END;
 
-        ArgTypeMask arg_type_mask = content[IP(spu) + 1];
+        ArgTypeMask arg_type_mask = content[IP(spu) + 1]; // TODO: arg types in byte with opcode
         stk_elem_t arg = 0;
         memcpy(&arg, content + IP(spu) + 2, sizeof(stk_elem_t));
 
