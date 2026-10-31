@@ -2,6 +2,7 @@
 
 #include "../secstack/src/secstack.h"
 #include "listing.h"
+#include "spu/spu_internal.h"
 
 
 #define ANSI_GREEN "\e[32m"
@@ -24,8 +25,5 @@ typedef enum {
     ERROR
 } LogLevel;
 
-void ASM_OUT_print(stk_elem_t last_elem);
-void log_instr(FILE *to, OpInfo opinfo, ArgTypeMask arg_mask, stk_elem_t arg);
 void log_msg(FILE *to, LogLevel level, const char *fmt, ...);
 void log_header(FILE *to, LogLevel level);
-void init_spu_dbg_file(SPU* spu, const char *filename);

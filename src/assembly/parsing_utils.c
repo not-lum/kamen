@@ -56,7 +56,7 @@ static bool str_starts_with(const char *str, char ch) {
 }
 
 bool is_comment(const char *str) {
-    return str_starts_with(str, ';');
+    return str_starts_with(str, COMMENT_CHAR);
 }
 
 bool is_label(const char *str) {
@@ -171,15 +171,15 @@ bool detect_bad_char(ParsingContext *ctx, char *str) {
         ctx->column++;
     }
 
-    if (*str != ';' && *str != '\0') {
-        return true; // TODO: #define COMMENT_CHAR ';' 
+    if (*str != COMMENT_CHAR && *str != '\0') {
+        return true;
     }
 
     return false;
 }
 
 
-ParsingStatus handle_arg_none(ParsingContext *ctx,
+static ParsingStatus handle_arg_none(ParsingContext *ctx,
                               Instr* out_instr) {
     assert(ctx != NULL);
     assert(out_instr != NULL);
@@ -191,7 +191,7 @@ ParsingStatus handle_arg_none(ParsingContext *ctx,
 }
 
 
-ParsingStatus handle_arg_label(ParsingContext *ctx,
+static ParsingStatus handle_arg_label(ParsingContext *ctx,
                                ArgStr *arg_str,
                                Instr *out_instr) {
     assert(ctx != NULL);
@@ -211,7 +211,7 @@ ParsingStatus handle_arg_label(ParsingContext *ctx,
     return PARSING_UNKNOWN_LABEL;
 }
 
-ParsingStatus handle_arg_stk_elem(ParsingContext *ctx,
+static ParsingStatus handle_arg_stk_elem(ParsingContext *ctx,
                                   ArgStr *arg_str,
                                   Instr *out_instr) {
     assert(ctx != NULL);
@@ -223,8 +223,7 @@ ParsingStatus handle_arg_stk_elem(ParsingContext *ctx,
     long long parsed_numb = strtoll(arg_str->str, &end_ptr, 10);
 
     if (errno == ERANGE || parsed_numb > STK_ELEM_MAX || parsed_numb < STK_ELEM_MIN) {
-        ctx->column -= arg_str->len;          // TODO: why do we even increase ctx->column in parse arg,
-                                              // if only need it in errors in which we decrease it?
+        ctx->column -= arg_str->len;
         
         return PARSING_ARG_OUT_OF_RANGE;
     }
@@ -243,7 +242,7 @@ ParsingStatus handle_arg_stk_elem(ParsingContext *ctx,
     return PARSING_BAD_NUMBER;
 }
 
-ParsingStatus handle_arg_reg(ParsingContext *ctx,
+static ParsingStatus handle_arg_reg(ParsingContext *ctx,
                              const ArgStr *arg_str,
                              Instr *out_instr) {
     assert(ctx != NULL);
@@ -265,7 +264,7 @@ ParsingStatus handle_arg_reg(ParsingContext *ctx,
 }
 
 
-ParsingStatus enable_arg_ram(ParsingContext *ctx, ArgStr *arg_str,
+static ParsingStatus enable_arg_ram(ParsingContext *ctx, ArgStr *arg_str,
                              Instr *out_instr) {
     assert(ctx != NULL);
     assert(arg_str != NULL);
@@ -279,60 +278,60 @@ ParsingStatus enable_arg_ram(ParsingContext *ctx, ArgStr *arg_str,
 }
 
 
-ParsingStatus parse_arg(ParsingContext *context, ArgTypeMask allowed_arg_type,
-                        Instr* out_instr) {
-    assert(context != NULL);
+static ParsingStatus parse_arg(ParsingContext *ctx, ArgTypeMask allowed_arg_type,
+                               Instr* out_instr) {
+    assert(ctx != NULL);
     assert(out_instr != NULL);
 
     ArgStr arg_str = {
         .str = (char [MAX_ARG_LEN]){}, // compound literal !!!
         .len = 0
     };
-    ParsingStatus status = parse_arg_str(context, &arg_str);
+    ParsingStatus status = parse_arg_str(ctx, &arg_str);
 
     if (status != PARSING_OK) {
         if (allowed_arg_type & ARG_NONE)
-            return handle_arg_none(context, out_instr);
+            return handle_arg_none(ctx, out_instr);
         else
             return status;
     }
 
     if ((allowed_arg_type & ARG_LABEL) && arg_str.str[0] == '.')
-        return handle_arg_label(context, &arg_str, out_instr);
+        return handle_arg_label(ctx, &arg_str, out_instr);
 
     if ((allowed_arg_type & ARG_RAM) && (arg_str.str[0] == '[')) {
         if (arg_str.str[arg_str.len - 1] != ']')
             return PARSING_SQUARE_BRACKET_NOT_CLOSED;
 
-        enable_arg_ram(context, &arg_str, out_instr);
+        enable_arg_ram(ctx, &arg_str, out_instr);
     }
 
     if (allowed_arg_type & ARG_STK_ELEM) {
-        status = handle_arg_stk_elem(context, &arg_str, out_instr);
+        status = handle_arg_stk_elem(ctx, &arg_str, out_instr);
         if (status == PARSING_OK || status == PARSING_BAD_NUMBER ||
             status == PARSING_ARG_OUT_OF_RANGE)
             return status;
     }
 
     if (allowed_arg_type & ARG_REG)
-        return handle_arg_reg(context, &arg_str, out_instr);
+        return handle_arg_reg(ctx, &arg_str, out_instr);
     
     if (!is_comment(arg_str.str)) {
-        context->column -= arg_str.len;
+        ctx->column -= arg_str.len;
         return PARSING_UNABLE_TO_PARSE_ARG;
     } else {
-        context->column = context->asm_file.index[context->line_index].len;
+        ctx->column = indexed_file_get_line_len(&ctx->asm_file,
+                                                ctx->line_index);
         return PARSING_OK;
     }
 }
 
 
-ParsingStatus _parse_line_body(ParsingContext *ctx, Instr *instr) {
+static ParsingStatus _parse_line_body(ParsingContext *ctx, Instr *instr) {
     assert(ctx != NULL);
     assert(instr != NULL);
-    // TODO: func should be screen size
-    // TODO: maybe use something like _parse_line_body and then handle errors here
-    // than no need for RETURN_OK and RETURN_ERROR
+    // TODO: separate into funcs, improve code quality - DONE
+    // TODO: add add_label func - DONE
 
     char *line = indexed_file_get_line(&ctx->asm_file, ctx->line_index);
 
@@ -359,7 +358,7 @@ ParsingStatus parse_line(ParsingContext *ctx, Instr *out_instr,
     assert(out_instr != NULL);
     // out_error_info could be NULL - in that case no error info is written
 
-    char *line = ctx->asm_file.index[ctx->line_index].addr;
+    char *line = indexed_file_get_line(&ctx->asm_file, ctx->line_index);
 
     ParsingStatus status = _parse_line_body(ctx, out_instr);
     if (status == PARSING_OK && !out_instr->is_blank && detect_bad_char(ctx, line + ctx->column))

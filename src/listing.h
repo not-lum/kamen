@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include <math.h>
 
+#define BIN_SIGNATURE "KMN'"
+#define BIN_SIGNATURE_SIZE 4
+#define FILESIZE_HEADER_SIZE 8
+#define FULL_HEADER_SIZE (BIN_SIGNATURE_SIZE + FILESIZE_HEADER_SIZE)
+
 #define INSTR_DEFAULT_SIZE 1 + 1 + 4
 #define INSTR_NO_ARG_SIZE 1
 
@@ -26,6 +31,11 @@ typedef enum {
     ASM_HLT = 0,
     ASM_PUSH,
     ASM_POP,
+    ASM_SET,
+    ASM_DISP,
+    ASM_DISPFPS,
+    ASM_DISPCLR,
+    ASM_SLEEP,
     ASM_MUL,
     ASM_ADD,
     ASM_SUB,
@@ -41,12 +51,6 @@ typedef enum {
     ASM_CALL,
     ASM_RET,
     ASM_SQRT,
-    ASM_SET,
-    ASM_DISP,
-    ASM_DISPFPS,
-    ASM_DISPCLR,
-    ASM_SLEEP,
-
     ASM_UNKNOWN,
 } Opcode;
 

@@ -2,6 +2,7 @@
 
 #include "../../secstack/src/secstack.h"
 #include "../file_utils.h"
+// #include "../listing.h"
 
 // Debug settings are located in this file:
 #include "config/dbg_config.h"
@@ -24,6 +25,7 @@
 #   define ON_SPU_DEBUG_STDERR(...)
 #endif
 
+
 #define RAM_HEIGHT 60
 #define RAM_WIDTH 80
 #define RAM_SIZE RAM_HEIGHT * RAM_WIDTH
@@ -45,10 +47,12 @@ typedef enum {
     SPU_TIME_CALC_ERROR,
     SPU_SLEEP_ERROR,
     SPU_SLEEP_ARG_LESS_THAN_ZERO,
-    SPU_SET_ARG_OUT_OF_RANGE,
-    SPU_INVALID_REGISTER_INDEX
+    SPU_INVALID_RAM_ADDR,
+    SPU_INVALID_REGISTER_INDEX,
+    SPU_UNKNOWN_OPCODE,
+    SPU_INVALID_SIGNATURE,
+    SPU_INVALID_HEADER
 } SPUStatus;
-
 
 typedef struct SPU {
     Code code;
@@ -61,6 +65,11 @@ typedef struct SPU {
     FILE *_dbg_logfile;
     )
 } SPU;
+
+// typedef struct {
+//     OpInfo op;
+
+// } ;
 
 
 const char *spu_error_str(SPUStatus status);

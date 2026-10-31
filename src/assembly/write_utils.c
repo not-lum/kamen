@@ -4,6 +4,7 @@
 #include "../file_utils.h"
 
 #include <assert.h>
+#include "../listing.h"
 
 
 const char *write_error_str(WriteStatus status) {
@@ -19,6 +20,11 @@ const char *write_error_str(WriteStatus status) {
         default:
             return "unknown write error";
     }
+}
+
+static void write_header_to(size_t bytecode_len, FILE *to) {
+    fwrite(BIN_SIGNATURE, BIN_SIGNATURE_SIZE, 1, to);
+    fwrite(&bytecode_len, FILESIZE_HEADER_SIZE, 1, to);
 }
 
 static void write_instr_to(Instr *instr, FILE *to) {
@@ -69,6 +75,7 @@ WriteStatus assembly_indexed_file(IndexedFile *idx_file,
         return WRITE_ERROR_WHILE_PARSING;
     }
 
+    write_header_to(parsing_context.bytecode_len, bcode_file);
     // for (size_t i = 0; i < 10; i++)
     //     fprintf(stderr, "(label_name, addr): (%s, %d)\n",
     //             parsing_context.labels[i].label_name, parsing_context.labels[i].addr);

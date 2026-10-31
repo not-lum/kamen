@@ -35,4 +35,5 @@ FileStatus create_indexed_file(IndexedFile *out_idx_file, const char *filename);
 void destroy_loaded_file(LoadedFile *out_l_file);
 void destroy_indexed_file(IndexedFile *out_idx_file);
 FileStatus get_file_size(const char *filename, size_t *out_file_size);
-char *indexed_file_get_line(IndexedFile *idx_file, size_t line_index);
+char *indexed_file_get_line(const IndexedFile *idx_file, size_t line_index);
+size_t indexed_file_get_line_len(const IndexedFile *idx_file, size_t line_index);

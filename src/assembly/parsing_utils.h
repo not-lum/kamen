@@ -13,7 +13,7 @@
 #define MAX_ARG_LEN_STR "29" // 30-1=29 (null byte doesn't count)
 #define MAX_LABEL_LEN_STR "29" // 30-1=29 (null byte doesn't count)
 
-// DSL
+#define COMMENT_CHAR ';' 
 
 typedef enum {
     PARSING_OK = 0,
@@ -73,11 +73,8 @@ void make_error_info(ParsingContext *, ParsingStatus, ParsingErrorInfo *);
 
 ParsingStatus parse_line(ParsingContext *context, Instr *instr, ParsingErrorInfo *out_error_info);
 ParsingStatus parse_op(ParsingContext *, OpInfo *);
-ParsingStatus parse_arg(ParsingContext *, ArgTypeMask, Instr *);
 
 ParsingStatus collect_labels(ParsingContext *context, ParsingErrorInfo *error_info);
-ParsingStatus add_label(ParsingContext *, Label);
-ParsingStatus parse_label(ParsingContext *, Label *);
 bool find_label(ParsingContext *, const char *, stk_elem_t *);
 
 bool is_comment(const char *);

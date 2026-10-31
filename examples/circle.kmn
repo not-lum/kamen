@@ -22,9 +22,6 @@ pop BX ; y = 0
     push AX
     mul
 
-    push 2
-    div
-
     push BX
     push 30
     sub

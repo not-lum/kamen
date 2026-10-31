@@ -3,10 +3,11 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
-// bin search: opcode, name
+
+// IMPORTANT: EACH STRUCT MUST HAVE INDEX EQUAL TO ITS OPCODE
 OpInfo OPINFO_ARR[] = {
-    // INIT_CMD(push, ARG_STK_ELEM | ARG_REG)
     {ASM_HLT    , ARG_NONE                          , "hlt"    , NULL},
     {ASM_PUSH   , ARG_STK_ELEM | ARG_REG | ARG_RAM  , "push"   , &spu_push},
     {ASM_POP    , ARG_REG                           , "pop"    , &spu_pop},
@@ -46,6 +47,7 @@ RegInfo REGINFO_ARR[] = {
 
 
 OpInfo get_opinfo_by_str(const char *str_repr) {
+    assert(str_repr != NULL);
     // TODO: add hashes
     for (size_t i = 0; i < sizeof(OPINFO_ARR) / sizeof(OPINFO_ARR[0]); i++) {
         if (strcasecmp(OPINFO_ARR[i].str_repr, str_repr) == 0) {
@@ -60,13 +62,8 @@ OpInfo get_opinfo_by_str(const char *str_repr) {
 
 OpInfo get_opinfo_by_opcode(Opcode opcode) {
     // TODO: index by opcode cmd
-    for (size_t i = 0; i < sizeof(OPINFO_ARR) / sizeof(OPINFO_ARR[0]); i++) {
-        if (OPINFO_ARR[i].opcode == opcode) {
-            return OPINFO_ARR[i];
-        }
-    }
-
-    return (OpInfo){ASM_UNKNOWN, ARG_NONE, "", NULL};
+    
+    return OPINFO_ARR[opcode];
 }
 
 
@@ -82,13 +79,7 @@ RegInfo get_reginfo_by_str(const char *str_repr) {
 
 
 RegInfo get_reginfo_by_code(RegisterCode regcode) {
-    for (size_t i = 0; i < sizeof(REGINFO_ARR) / sizeof(REGINFO_ARR[0]); i++) {
-        if (REGINFO_ARR[i].regcode == regcode) {
-            return REGINFO_ARR[i];
-        }
-    }
-
-    return (RegInfo){REG_UNKNOWN, "UNKNOWN"};
+    return REGINFO_ARR[regcode];
 }
 
 

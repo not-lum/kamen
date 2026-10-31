@@ -4,8 +4,46 @@
 #include <string.h>
 
 // TODO: labels array in heap
+static ParsingStatus add_label(ParsingContext *ctx, Label label) {
+    assert(ctx != NULL);
 
-ParsingStatus _collect_labels_body(ParsingContext *ctx) {
+    ctx->labels[ctx->labels_count] = label;
+    ctx->labels_count++;
+
+    return PARSING_OK;
+}
+
+
+ParsingStatus parse_label(ParsingContext *ctx, Label *out_label) {
+    assert(ctx != NULL);
+    assert(out_label != NULL);
+    // TODO: hashes
+
+    char *line = indexed_file_get_line(&ctx->asm_file, ctx->line_index);
+
+    int parsed_before_colon_len = 0;
+    int parsed_len = 0;
+    size_t sscanf_args_numb = sscanf(line, " .%" MAX_LABEL_LEN_STR "[^:]%n:%n",
+                                     out_label->name, &parsed_before_colon_len, &parsed_len); 
+    
+    ctx->column += parsed_len;
+
+    if (parsed_len == 0) {
+        ctx->column += parsed_before_colon_len;
+        return PARSING_LABEL_DOESNT_END_WITH_COLON;
+    }
+
+    if (sscanf_args_numb == 1) {
+        out_label->addr = ctx->bytecode_len;
+
+        return PARSING_OK;
+    }
+
+    return PARSING_EMPTY_LABEL;
+}
+
+
+static ParsingStatus _collect_labels_body(ParsingContext *ctx) {
     assert(ctx != NULL);
     // out_error_info
 
@@ -23,7 +61,7 @@ ParsingStatus _collect_labels_body(ParsingContext *ctx) {
                 return PARSING_BAD_CHAR;
             }
 
-            add_label(ctx, label); // TODO: rename to label_add
+            add_label(ctx, label); 
         } else if (!is_comment(line) && !is_empty_line(line)) {
             OpInfo opinfo = {};
             ParsingStatus status = parse_op(ctx, &opinfo);
@@ -75,51 +113,4 @@ bool find_label(ParsingContext *ctx, const char *name, stk_elem_t *out_addr) {
     return false;
 }
 
-ParsingStatus add_label(ParsingContext *ctx, Label label) {
-    assert(ctx != NULL);
-
-    ctx->labels[ctx->labels_count] = label;
-    ctx->labels_count++;
-
-    return PARSING_OK;
-}
-
-ParsingStatus parse_label(ParsingContext *ctx, Label *out_label) {
-    assert(ctx != NULL);
-    assert(out_label != NULL);
-    // TODO: separate function to add label to label array; destroy_label
-    // TODO: hashes
-
-    char *line = indexed_file_get_line(&ctx->asm_file, ctx->line_index);
-
-    int parsed_before_colon_len = 0;
-    int parsed_len = 0;
-    // TODO: refactor this. detect_bad_char already exists
-    size_t sscanf_args_numb = sscanf(line, " .%" MAX_LABEL_LEN_STR "[^:]%n:%n",
-                                     out_label->name, &parsed_before_colon_len, &parsed_len); 
-    
-    ctx->column += parsed_len;
-    
-    // fprintf(stderr, "sscanf_args_numb: %zu\n", sscanf_args_numb);
-    // fprintf(stderr, "bad_label_char: <%c>\n", bad_char);
-
-    // if (!isspace(bad_char) && bad_char != ';' && bad_char != '\0') {
-    //     ctx->column--;
-
-    //     return PARSING_BAD_CHAR;
-    // }
-
-    if (parsed_len == 0) {
-        ctx->column += parsed_before_colon_len;
-        return PARSING_LABEL_DOESNT_END_WITH_COLON;
-    }
-
-    if (sscanf_args_numb == 1) {
-        out_label->addr = ctx->bytecode_len;
-
-        return PARSING_OK;
-    }
-
-    return PARSING_EMPTY_LABEL;
-}
 
